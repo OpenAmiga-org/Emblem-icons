@@ -14,6 +14,8 @@ Install script that installs, updates and removes everything.
 
 Public domain ([UNLICENSE](UNLICENSE)), the art too.
 
+Download: the package `Emblem.lha` is on the [releases page](https://github.com/orgin/emblemicon/releases). Unpack it on AmigaOS 4.1 and double-click Install, then restart.
+
 ## Layout
 
 | Path | What |
