@@ -287,6 +287,90 @@ async def step1(g):
     rc, out = await g.cmd(f"{G}/EmblemIcon {G}/nonexistent TO=EMBLEM")
     ok("missing icon: error, rc 10", rc == 10 and out.startswith("Error:"), out.strip())
 
+    await step1_set(g)
+
+
+def tts(lines):
+    return [l[3:] for l in lines if l.startswith("tt=")]
+
+
+def no_tts(lines):
+    return [l for l in strip_format(lines) if not l.startswith("tt=")]
+
+
+async def step1_set(g):
+    """EmblemIcon 1.1: SET, UNSET and TYPE (bulk tool types)"""
+    T = f"{G}/tt"
+    EI = f"{G}/EmblemIcon"
+    await g.cmd(f"Delete {T} ALL QUIET FORCE", timeout=20)
+    await g.cmd(f"MakeDir {T}", timeout=10)
+    for src, dst in (("drawer", "d1"), ("drawer", "d2"), ("argb", "p1"), ("argb", "p2")):
+        await g.cmd(f"Copy {G}/{src}.info {T}/{dst}.info QUIET", timeout=10)
+    rc, d1n = await g.dump(f"{T}/d1")
+    rc, p1n = await g.dump(f"{T}/p1")
+    ok("SET test icons: d1 a drawer, p1 not", val(d1n, "type") == "2" and val(p1n, "type") != "2",
+       f"{val(d1n, 'type')} {val(p1n, 'type')}")
+
+    # convert and set in one go; the icon's own images and other data stay
+    rc, out = await g.cmd(f'{EI} {T}/d1 TO=EMBLEM SET="IMAGE=GlassDrawer|EMBLEM=INTERNAL,30,30,33,30"')
+    rc2, d1 = await g.dump(f"{T}/d1")
+    ok("SET with TO=EMBLEM: converted, tool types added", rc == 0 and "converted to Emblem, tool types changed" in out
+       and fmt(d1) == "Emblem" and tts(d1) == tts(d1n) + ["IMAGE=GlassDrawer", "EMBLEM=INTERNAL,30,30,33,30"], out + " " + str(tts(d1)))
+    ok("SET with TO=EMBLEM: own images and data unchanged", no_tts(d1) == no_tts(d1n), diffs(no_tts(d1n), no_tts(d1)))
+
+    # replace in place (key case ignored), duplicates removed
+    await g.cmd(f'{G}/icontest tt {T}/d1 "IMAGE=Duplicate"')
+    rc, out = await g.cmd(f'{EI} {T}/d1 SET="image=Other"')
+    rc2, d1b = await g.dump(f"{T}/d1")
+    want = tts(d1n) + ["image=Other", "EMBLEM=INTERNAL,30,30,33,30"]
+    ok("SET replaces the first IMAGE in place and drops the duplicate", rc == 0 and tts(d1b) == want and fmt(d1b) == "Emblem",
+       f"{out} {tts(d1b)}")
+    rc, out = await g.cmd(f'{EI} {T}/d1 SET="image=Other"')
+    ok("SET again: no change", rc == 0 and "no change" in out, out)
+
+    # back to native without the tool types: as it was
+    rc, out = await g.cmd(f'{EI} {T}/d1 TO=AMIGA UNSET="IMAGE|emblem"')
+    rc2, d1c = await g.dump(f"{T}/d1")
+    ok("TO=AMIGA UNSET: native again, exactly as before", rc == 0 and fmt(d1c) == "Amiga"
+       and strip_format(d1c) == strip_format(d1n), out + " " + diffs(strip_format(d1n), strip_format(d1c)))
+
+    # TYPE with ALL: only the drawer icons
+    await g.cmd(f"{EI} {T}/p2 TO=EMBLEM QUIET")
+    rc, out = await g.cmd(f'{EI} {T} ALL TYPE=DRAWER TO=EMBLEM SET="IMAGE=GlassDrawer"', timeout=60)
+    dumps = {}
+    for k in ("d1", "d2", "p1", "p2"):
+        rc2, dumps[k] = await g.dump(f"{T}/{k}")
+    ok("ALL TYPE=DRAWER TO=EMBLEM SET: both drawers converted with the tool type",
+       all(fmt(dumps[k]) == "Emblem" and "IMAGE=GlassDrawer" in tts(dumps[k]) for k in ("d1", "d2"))
+       and "2 icons converted to Emblem, 2 with changed tool types" in out, out)
+    ok("ALL TYPE=DRAWER: other icons untouched", fmt(dumps["p1"]) == "Amiga" and fmt(dumps["p2"]) == "Emblem"
+       and "IMAGE=GlassDrawer" not in tts(dumps["p1"]) + tts(dumps["p2"]), out)
+
+    # SET without TO in an ALL run: Emblem icons only
+    rc, out = await g.cmd(f'{EI} {T} ALL SET="EMBLEM=Star"', timeout=60)
+    for k in ("d1", "d2", "p1", "p2"):
+        rc2, dumps[k] = await g.dump(f"{T}/{k}")
+    ok("ALL SET without TO: the 3 Emblem icons changed, the native one not",
+       all("EMBLEM=Star" in tts(dumps[k]) for k in ("d1", "d2", "p2")) and "EMBLEM=Star" not in tts(dumps["p1"])
+       and fmt(dumps["p1"]) == "Amiga" and "3 with changed tool types" in out, out)
+
+    # all back, tool types removed
+    rc, out = await g.cmd(f'{EI} {T} ALL TO=AMIGA UNSET="IMAGE|EMBLEM"', timeout=60)
+    rc2, d2 = await g.dump(f"{T}/d2")
+    rc3, d2n = await g.dump(f"{G}/drawer")
+    ok("ALL TO=AMIGA UNSET: all native, as made", rc == 0 and fmt(d2) == "Amiga"
+       and strip_format(d2) == strip_format(d2n), out + " " + diffs(strip_format(d2n), strip_format(d2)))
+
+    # bad arguments
+    rc, out = await g.cmd(f'{EI} {T}/d1 SET="NOEQUALS"')
+    ok("SET without '=': error, rc 20", rc == 20 and "KEY=value" in out, out)
+    rc, out = await g.cmd(f'{EI} {T}/d1 TYPE=FOLDER SET="A=B"')
+    ok("unknown TYPE: error, rc 20", rc == 20 and "TYPE must be" in out, out)
+    rc, out = await g.cmd(f"{EI} {T}/p1 TYPE=DRAWER TO=EMBLEM")
+    rc2, p1 = await g.dump(f"{T}/p1")
+    ok("single icon of another TYPE: skipped, unchanged", rc == 0 and "skipped" in out and fmt(p1) == "Amiga", out)
+    await g.cmd(f"Delete {T} ALL QUIET FORCE", timeout=20)
+
 
 
 def val(lines, key):

@@ -210,9 +210,10 @@ Good emblems have a dark rim, so they read on any image and background.
 @NODE EMBLEMICON "EmblemIcon command"
 @{b}EmblemIcon@{ub}
 
-  EmblemIcon FILES/M/A,TO/K,ALL/S,QUIET/S
+  EmblemIcon FILES/M/A,TO/K,ALL/S,TYPE/K,SET/K,UNSET/K,QUIET/S
 
-Turns icons into the Emblem format and back, or shows what they are.
+Turns icons into the Emblem format and back, shows what they are, and
+sets or removes tool types, one icon or whole drawer trees at a time.
 
   EmblemIcon Work:Music                 format and tool types
   EmblemIcon Work:Music TO=EMBLEM       to the Emblem format
@@ -222,20 +223,41 @@ Turns icons into the Emblem format and back, or shows what they are.
                                         and all drawers below it
   EmblemIcon Work: ALL TO=AMIGA         all of them back to normal icons
 
+Every drawer in Work: on the default drawer image, with its own picture
+as the emblem (see @{"INTERNAL" link TOOLTYPES}), in one go:
+
+  EmblemIcon Work: ALL TYPE=DRAWER TO=EMBLEM
+     SET="IMAGE=DrawerNS|IMAGESELECTED=DrawerS|EMBLEM=INTERNAL,30,30,33,30"
+
+(one line). And all of them back, without those tool types:
+
+  EmblemIcon Work: ALL TO=AMIGA UNSET="IMAGE|IMAGESELECTED|EMBLEM"
+
 FILES   icons, with or without ".info"; patterns work.
-TO      EMBLEM or AMIGA. Without TO the icons are shown.
+TO      EMBLEM or AMIGA. Without TO the icons are shown (or, with SET or
+        UNSET, changed in the format they have).
 ALL     also look in the drawers below (links are not followed).
+TYPE    only icons of these types: DISK, DRAWER, TOOL, PROJECT, GARBAGE,
+        DEVICE, KICK; several separated by commas (TYPE=DRAWER,DISK).
+SET     tool types to set, KEY=value, several separated by "|". A tool type
+        with that key (upper or lower case) is replaced where it is, other
+        ones with the same key are removed; a new key is added at the end.
+        Put the value in quotes: SET="IMAGE=DrawerNS".
+UNSET   keys of tool types to remove, separated by "|". Done before SET.
 QUIET   fewer messages; no tool types when showing.
 
-With a pattern or ALL, only Emblem icons are shown (and converted back
-with TO=AMIGA); with TO=EMBLEM, icons that are Emblem icons already are
-skipped. A count is printed at the end.
+With a pattern or ALL, only Emblem icons are shown, changed with SET or
+UNSET, and converted back with TO=AMIGA; TO=EMBLEM converts the normal
+icons (with SET or UNSET it changes the Emblem icons too). A count is
+printed at the end.
 
 The conversion keeps everything: the pictures, tool types, position,
-default tool, stack and drawer window. It needs the module to be
-running (installed, and the computer restarted).
+default tool, stack and drawer window. Every saved icon is loaded again and
+checked. It needs the module to be running (installed, and the computer
+restarted).
 
-Return code 10 if an icon failed, 5 when stopped with Ctrl-C.
+Return code 10 if an icon failed, 5 when stopped with Ctrl-C, 20 for wrong
+arguments.
 @ENDNODE
 
 @NODE EXAMPLES "The examples"

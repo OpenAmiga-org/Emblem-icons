@@ -28,7 +28,7 @@ Download: the package `Emblem.lha` is on the [releases page](https://github.com/
 | `src/emblemprefs.[ch]` | the settings file (emblem.prefs), portable |
 | `src/imagecache.[ch]` | decoded default images and emblems by name, and the settings (module only) |
 | `src/emblem.h` | public: format name, image folder, `EMBLEMA_NoCompose` tag |
-| `src/emblemicon.c` | EmblemIcon: convert icons to/from the Emblem format (patterns, ALL), show them |
+| `src/emblemicon.c` | EmblemIcon: convert icons to/from the Emblem format (patterns, ALL), show them, set/remove tool types (SET, UNSET, TYPE) |
 | `art/` | the sample art set of the package (drawn by `tools/make_art.py`) |
 | `package/` | Install script, guide, readme, examples ReadMe, the package's native icons |
 | `tools/make_art.py` | draws the art set, the example's own picture and the package icons' pictures |
@@ -71,6 +71,8 @@ EmblemIcon SYS:Devs                          ; show format and tool types
 EmblemIcon SYS:Devs TO=EMBLEM                ; convert to the Emblem format
 EmblemIcon SYS:Devs TO=AMIGA                 ; back to a native icon
 EmblemIcon Work: ALL                         ; list the Emblem icons in Work: and below
+EmblemIcon Work: ALL TYPE=DRAWER TO=EMBLEM SET="IMAGE=DrawerNS|EMBLEM=INTERNAL,30,30,33,30"
+                                             ; every drawer: Emblem, with these tool types
 ```
 
 Then add tool types to the Emblem icon, e.g. `IMAGE=DrawerNS`, `IMAGESELECTED=DrawerS` and
