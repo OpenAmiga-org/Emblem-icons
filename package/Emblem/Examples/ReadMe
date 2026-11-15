@@ -1,0 +1,20 @@
+Emblem examples
+===============
+
+Every icon in this drawer is an Emblem icon: a default image from
+ENVARC:sys/emblem with an emblem on it. Select one and choose
+Icons > Information... to see the tool types that make it.
+
+  Music       an emblem without a method: the settings decide
+  Pictures    SHADOW
+  Internet    GLOW
+  Games       size 0,0 = the emblem's own size; NONE
+  Downloads   another emblem
+  Private     DARK on the default images
+  Favourites  in the middle, and somewhere else when selected
+  Old stuff   GRAY on the image and the emblem
+  Tools       INTERNAL: the icon's own picture (a wrench) as the emblem
+  ReadMe      this file: no IMAGE=, the emblem goes on its own picture
+
+The drawers are empty. Copy them, or their tool types, as you like.
+Emblem.guide (one drawer up) explains everything.

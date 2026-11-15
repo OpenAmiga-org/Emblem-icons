@@ -1,0 +1,277 @@
+; Install script for Emblem (AmigaOS 4 Installation Utility).
+; Installs or removes emblem.iconmodule, EmblemIcon, the sample images,
+; the settings file and the documentation with the examples.
+; Public domain.
+
+(set #app "Emblem")
+(set @app-name "Emblem")
+(set @default-dest "SYS:Documentation")
+
+(set #mod "LIBS:IconModules/emblem.iconmodule")
+(set #tool "C:EmblemIcon")
+(set #imgdir "ENVARC:sys/emblem")
+(set #prefs "ENVARC:sys/emblem.prefs")
+(set #envprefs "ENV:sys/emblem.prefs")
+(set #docname "Emblem")
+
+; Automatic runs for the package tests: ENV:EmblemInstallTest set to
+; "install" or "remove" takes that action with all defaults (Novice level)
+; and ends without the last window.
+(set #test (getenv "EmblemInstallTest"))
+
+(welcome
+  (cat "This installs " #app ": icons with default images and emblems.\n\n"
+       "An icon module for icon.library composes them when an icon is loaded, "
+       "so every program that shows icons shows them."))
+
+(if (and (= @user-level 0) (= #test "")) (user 1))
+
+; --- install or remove -----------------------------------------------------
+
+(set #remove 0)
+(if (= #test "remove") (set #remove 1))
+(if (and (= #test "") (exists #mod))
+  (set #remove
+    (askchoice
+      (prompt (cat #app " is installed already. What do you want to do?"))
+      (help @askchoice-help)
+      (choices "Install it again (update)" "Remove it")
+      (default 0))))
+
+; ===========================================================================
+; Remove
+; ===========================================================================
+
+(procedure P_REMOVE
+  ; Emblem icons can't be read without the module: turn them back into
+  ; normal icons first. The pictures of their own stay; tool types too.
+  (if (exists #tool)
+    (
+      (set #convert
+        (askbool
+          (prompt "Turn the Emblem icons back into normal icons?\n\n"
+                  "Without the module, Workbench cannot show icons in the Emblem "
+                  "format. You choose the drawers or volumes; every drawer below "
+                  "them is searched too. The icons keep their own pictures and tool types.")
+          (help @askbool-help)
+          (default 1)))
+      (set #dir "SYS:")
+      (while #convert
+        (
+          (set #dir
+            (askdir
+              (prompt "Which drawer or volume? (All drawers below it are searched too.)")
+              (help @askdir-help)
+              (default #dir)
+              (disk)))
+          (working "Converting the Emblem icons in " #dir)
+          (run (cat "C:EmblemIcon >ENV:EmblemRemove.out \"" #dir "\" ALL TO=AMIGA QUIET"))
+          (set #out (getenv "EmblemRemove.out"))
+          (run "C:Delete >NIL: ENV:EmblemRemove.out QUIET")
+          (if (= #test "")
+            (set #convert
+              (askbool
+                (prompt (cat #dir ": " #out "\n"
+                             "Convert the icons in another drawer or volume too?"))
+                (help @askbool-help)
+                (default 0)))
+            (set #convert 0))
+        )
+      )
+    )
+  )
+
+  ; the documentation drawer with the examples
+  (set #docs (tackon "SYS:Documentation" #docname))
+  (if (not (exists (tackon #docs "Emblem.guide")))
+    (if (= #test "")
+      (set #docs
+        (askdir
+          (prompt "Where is the Emblem documentation drawer (the one with Emblem.guide "
+                  "and the Examples)? Choose it, or Cancel to keep it.")
+          (help @askdir-help)
+          (default "SYS:Documentation")))))
+  (if (exists (tackon #docs "Emblem.guide"))
+    (
+      (run (cat "C:Delete >NIL: \"" #docs "\" ALL QUIET FORCE"))
+      (run (cat "C:Delete >NIL: \"" #docs ".info\" QUIET FORCE"))
+    )
+  )
+
+  ; the images: the sample ones (names from this package), and the drawer if
+  ; it is empty then
+  (set #imgs 0)
+  (if (exists #imgdir)
+    (set #imgs
+      (askchoice
+        (prompt (cat "What should happen to the images in " #imgdir "?"))
+        (help @askchoice-help)
+        (choices "Delete the sample images, keep the ones I added"
+                 "Delete all of them"
+                 "Keep all of them")
+        (default 0))))
+  (if (= #imgs 0)
+    (
+      (foreach "Images" "#?.png"
+        (run (cat "C:Delete >NIL: \"" (tackon #imgdir @each-name) "\" QUIET FORCE")))
+      (run (cat "C:Delete >NIL: \"" #imgdir "\" QUIET"))
+      (run (cat "C:Delete >NIL: \"ENV:sys/emblem\" QUIET"))
+    )
+  )
+  (if (= #imgs 1)
+    (
+      (run (cat "C:Delete >NIL: \"" #imgdir "\" ALL QUIET FORCE"))
+      (run (cat "C:Delete >NIL: \"ENV:sys/emblem\" ALL QUIET FORCE"))
+    )
+  )
+
+  ; the settings
+  (run (cat "C:Delete >NIL: " #prefs " " #envprefs " QUIET FORCE"))
+
+  ; the programs. The module stays in memory until the computer restarts.
+  (run (cat "C:Delete >NIL: " #tool " " #mod " QUIET FORCE"))
+
+  (if (<> #test "") (exit (quiet)))
+  (exit (cat #app " is removed.\n\nThe module stays active until the computer restarts.")
+        (quiet))
+)
+
+(if #remove (P_REMOVE))
+
+; ===========================================================================
+; Install
+; ===========================================================================
+
+; --- requirements -------------------------------------------------------------
+
+(set #missing "")
+(if (< (getversion "icon.library" (resident)) (+ (* 51 65536) 15))
+  (set #missing (cat #missing "\nicon.library 51.15 or newer (AmigaOS 4.1)")))
+(set #zv (getversion "LIBS:z.library"))
+(if (= #zv 0) (set #zv (getversion "z.library" (resident))))
+(if (< #zv (* 53 65536))
+  (set #missing (cat #missing "\nz.library 53 or newer (part of AmigaOS 4.1 Final Edition)")))
+(if (<> #missing "")
+  (if (= 0 (askbool
+        (prompt (cat "Emblem needs:" #missing
+                     "\n\nIt cannot work without them. Install anyway?"))
+        (help @askbool-help)
+        (choices "Install anyway" "Stop")
+        (default 0)))
+    (exit (quiet))))
+
+; --- programs -------------------------------------------------------------
+
+(if (not (exists "LIBS:IconModules"))
+  (makedir "LIBS:IconModules" (prompt "Creating LIBS:IconModules") (help @makedir-help)))
+
+; A running module is in memory, not in use as a file: it can be replaced;
+; the new one is used after the next restart.
+(copyfiles
+  (prompt "Copying emblem.iconmodule to LIBS:IconModules")
+  (help @copyfiles-help)
+  (source "Libs/IconModules/emblem.iconmodule")
+  (dest "LIBS:IconModules")
+  (confirm "expert"))
+
+(copyfiles
+  (prompt "Copying the EmblemIcon command to C:")
+  (help @copyfiles-help)
+  (source "C/EmblemIcon")
+  (dest "C:")
+  (confirm "expert"))
+
+; --- sample images ----------------------------------------------------------
+
+(set #had 0)
+(foreach "Images" "#?.png"
+  (if (exists (tackon #imgdir @each-name)) (set #had 1)))
+(set #replace 1)
+(if #had
+  (set #replace
+    (askbool
+      (prompt (cat #imgdir " has sample images of an earlier install. "
+                   "Replace them with the ones of this version?\n"
+                   "(Images you added yourself are never touched.)"))
+      (help @askbool-help)
+      (default 1))))
+(if (not (exists #imgdir))
+  (makedir #imgdir (prompt (cat "Creating " #imgdir)) (help @makedir-help)))
+(foreach "Images" "#?.png"
+  (if (or #replace (not (exists (tackon #imgdir @each-name))))
+    (copyfiles
+      (prompt "Copying the sample images")
+      (help @copyfiles-help)
+      (source (tackon "Images" @each-name))
+      (dest #imgdir)
+      (nogauge))))
+
+; --- settings ---------------------------------------------------------------
+
+(if (not (exists #prefs))
+  (
+    (set #m
+      (askchoice
+        (prompt "Which effect should emblems get when their tool type names none?\n"
+                "(You can change it later in " #prefs ".)")
+        (help @askchoice-help)
+        (choices "A soft shadow (SHADOW)" "A glow (GLOW)" "None (NONE)")
+        (default 0)))
+    (set #mname (select #m "SHADOW" "GLOW" "NONE"))
+    (textfile
+      (prompt "Writing the settings")
+      (help @textfile-help)
+      (dest #prefs)
+      (append "; Emblem settings, read by emblem.iconmodule (see Emblem.guide).\n")
+      (append "; KEY=value lines; lines starting with ; or # are comments.\n")
+      (append ";\n")
+      (append "; METHOD=NONE|SHADOW|GLOW|GRAY|DARK|BRIGHT  for tool types without a method\n")
+      (append "; IMAGEMETHOD=...   only for IMAGE= and IMAGESELECTED= (wins over METHOD)\n")
+      (append "; EMBLEMMETHOD=...  only for EMBLEM= and EMBLEMSELECTED= (wins over METHOD)\n")
+      (append "; SHADOWOFFSET=5,5  SHADOWBLUR=2  SHADOWOPACITY=50\n")
+      (append "; GLOWCOLOR=FFFFFF  GLOWSIZE=2    GLOWOPACITY=80\n")
+      (append ";\n")
+      (append (cat "EMBLEMMETHOD=" #mname "\n")))
+    (copyfiles (source #prefs) (dest "ENV:sys") (nogauge))
+  )
+)
+
+; --- documentation and examples ---------------------------------------------
+
+(set #docdir "SYS:Documentation")
+(if (= #test "")
+  (set #docdir
+    (askdir
+      (prompt "Where should the documentation and the examples go?\n"
+              "A drawer named Emblem is created there.")
+      (help @askdir-help)
+      (default "SYS:Documentation"))))
+(set #docs (tackon #docdir #docname))
+(if (not (exists #docs))
+  (makedir #docs (prompt "Creating the documentation drawer") (help @makedir-help) (infos)))
+(foreach "" "#?.(guide|txt)"
+  (copyfiles
+    (prompt "Copying the documentation")
+    (help @copyfiles-help)
+    (source @each-name)
+    (dest #docs)
+    (infos)
+    (nogauge)))
+(copyfiles
+  (prompt "Copying the examples")
+  (help @copyfiles-help)
+  (source "Examples")
+  (dest (tackon #docs "Examples"))
+  (all)
+  (infos)
+  (nogauge))
+(copyfiles (source "Examples.info") (dest #docs) (nogauge))
+
+; --- done -------------------------------------------------------------------
+
+(if (<> #test "") (exit (quiet)))
+(exit (cat #app " is installed.\n\n"
+           "Restart the computer: icon.library loads icon modules only when it starts.\n\n"
+           "Then open " (tackon #docs "Examples") " to see some Emblem icons, and read "
+           (tackon #docs "Emblem.guide") " to make your own.")
+      (quiet))

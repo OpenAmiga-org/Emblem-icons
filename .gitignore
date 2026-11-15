@@ -1,0 +1,6 @@
+build/
+dist/
+art/icons/
+spike/*.iconmodule
+spike/*.iconmodule.debug
+spike/iconload

@@ -1,0 +1,328 @@
+@DATABASE Emblem.guide
+@$VER: Emblem.guide 1.0 (15.11.2026)
+@AUTHOR Björn Hagström
+@WORDWRAP
+@NODE MAIN "Emblem"
+
+@{b}Emblem 1.0@{ub} - icons with default images and emblems
+
+Emblem lets an icon borrow a shared default image (a drawer, a page) and
+put an emblem on it: a small picture that says what is inside, like a
+note for music or a globe for internet things. The emblem can get a soft
+shadow, a glow, or be grayed, darkened or brightened.
+
+It is an icon module for icon.library: icons in the Emblem format are put
+together when they are loaded, so Workbench, file managers and every
+other program that uses icon.library show them. Change one image in
+ENVARC:sys/emblem and every icon that uses it changes with it.
+
+  @{" Installing         " link INSTALL}
+  @{" Quick start        " link QUICK}
+  @{" The tool types     " link TOOLTYPES}
+  @{" Methods (effects)  " link METHODS}
+  @{" Settings file      " link PREFS}
+  @{" Images and emblems " link IMAGES}
+  @{" EmblemIcon command " link EMBLEMICON}
+  @{" The examples       " link EXAMPLES}
+  @{" Good to know       " link NOTES}
+  @{" Removing Emblem    " link REMOVE}
+  @{" For programmers    " link PROGRAMMERS}
+  @{" History            " link HISTORY}
+  @{" Author and licence " link AUTHOR}
+@ENDNODE
+
+@NODE INSTALL "Installing"
+@{b}Installing@{ub}
+
+Needs AmigaOS 4.1 (icon.library 51.15 or newer, z.library 53 or newer).
+
+Double-click @{i}Install@{ui}. It copies
+
+  emblem.iconmodule   to LIBS:IconModules
+  EmblemIcon          to C:
+  the sample images   to ENVARC:sys/emblem
+  the settings        to ENVARC:sys/emblem.prefs (and ENV:sys)
+  this guide and the  to a drawer "Emblem" in SYS:Documentation
+  examples               (or where you choose)
+
+Then @{b}restart the computer@{ub}: icon.library loads icon modules only when
+it starts.
+
+Running Install again updates an installed copy; it can also remove
+Emblem (see @{"Removing Emblem" link REMOVE}).
+
+By hand: copy the files to the places above and restart.
+@ENDNODE
+
+@NODE QUICK "Quick start"
+@{b}Quick start@{ub}
+
+Normal icons are never shown to icon modules (icon.library reads them
+itself), so an icon must be in the Emblem format first. To give the drawer
+Work:Music a music emblem:
+
+1. In a Shell:
+
+     EmblemIcon Work:Music TO=EMBLEM
+
+   The icon looks the same: it still has its own picture.
+
+2. Select the icon, choose @{i}Icons > Information...@{ui} and add these
+   tool types:
+
+     IMAGE=DrawerNS
+     IMAGESELECTED=DrawerS
+     EMBLEM=EmblemMusic,28,28,34,32
+     EMBLEMSELECTED=EmblemMusic,28,28,34,32
+
+   Save. The drawer now shows the sample drawer image with a note on it,
+   with a soft shadow if you kept the installer's choice.
+
+The icon keeps its own picture all the time: without these tool types,
+or if an image is missing, it is shown again. "EmblemIcon Work:Music
+TO=AMIGA" makes it a normal icon again.
+
+Note that a default image covers the icon's own picture. To keep the
+picture and only add an emblem, leave out IMAGE= and IMAGESELECTED=.
+@ENDNODE
+
+@NODE TOOLTYPES "The tool types"
+@{b}The tool types@{ub}
+
+  IMAGE=Name[,Method]
+  IMAGESELECTED=Name[,Method]
+
+     Show the image Name (ENVARC:sys/emblem/Name.png) instead of the
+     icon's own normal / selected picture.
+
+  EMBLEM=Name[,Width,Height,X,Y,Method]
+  EMBLEMSELECTED=Name[,Width,Height,X,Y,Method]
+
+     Draw the emblem Name on the normal / selected image.
+     Width,Height: the size it is drawn at. 0,0 (or nothing) = its own
+       size; when only one of them is 0, that one follows the emblem's
+       proportions.
+     X,Y: where its top left corner goes on the image (0,0 = top left).
+     Method: see @{"Methods" link METHODS}.
+
+  EMBLEM=INTERNAL,...   EMBLEMSELECTED=INTERNAL,...
+
+     The icon's own picture becomes the emblem: for example a program's
+     picture, small, on the drawer image. Needs IMAGE= (IMAGESELECTED=
+     for EMBLEMSELECTED).
+
+Rules:
+
+ - Names are file names in ENVARC:sys/emblem without ".png" (a name
+   with a dot is used as it is). Sub-drawers work: "Work/Busy".
+ - Write the keys exactly like this, in upper or lower case, with no
+   space before "=". When a key is there twice, the first one counts.
+ - A name that isn't found, or an image that can't be read, is ignored:
+   without its default image the icon shows its own picture, without
+   its emblem the emblem is left out.
+ - Without EMBLEMSELECTED the selected image has no emblem.
+ - The emblem is cut off at the image's edges.
+ - Things you don't want right now can be switched off with brackets:
+   (EMBLEM=EmblemMusic,28,28,34,32)
+@ENDNODE
+
+@NODE METHODS "Methods (effects)"
+@{b}Methods@{ub}
+
+The last field of a tool type chooses an effect for that layer (the
+default image, or the emblem):
+
+  SHADOW   a soft shadow under it, down and to the right
+  GLOW     a soft light rim around it
+  GRAY     in shades of gray
+  DARK     a quarter darker
+  BRIGHT   a quarter of the way to white
+  NONE     as it is
+
+  IMAGE=DrawerNS,GRAY
+  EMBLEM=EmblemStar,24,24,20,18,GLOW
+
+Without a method the @{"settings file" link PREFS} decides; the installer
+asks which effect emblems get then. Shadows and glows stay inside the
+image's rectangle.
+@ENDNODE
+
+@NODE PREFS "Settings file"
+@{b}The settings file@{ub}
+
+ENVARC:sys/emblem.prefs (and its copy ENV:sys/emblem.prefs, which is
+the one that is read) is a text file of KEY=value lines; lines starting
+with ; or # are comments.
+
+  METHOD=        method for tool types without one       (NONE)
+  IMAGEMETHOD=   ... only for IMAGE= and IMAGESELECTED=  (NONE)
+  EMBLEMMETHOD=  ... only for EMBLEM= and EMBLEMSELECTED= (NONE)
+                 IMAGEMETHOD and EMBLEMMETHOD win over METHOD.
+  SHADOWOFFSET=  x,y of the shadow, -16..16                (5,5)
+  SHADOWBLUR=    softness, 0 (hard) .. 8                   (2)
+  SHADOWOPACITY= percent                                   (50)
+  GLOWSIZE=      how far the glow reaches, 1..8            (2)
+  GLOWOPACITY=   percent                                   (80)
+  GLOWCOLOR=     RGB in hex, like FFD040                   (FFFFFF)
+
+Without a file, the values in brackets are used.
+
+Changes show within two seconds on the next icon that is loaded (open
+the drawer again). Edit ENVARC:sys/emblem.prefs and copy it to ENV:sys:
+
+  Copy ENVARC:sys/emblem.prefs ENV:sys/
+
+(ENV: keeps the copy it read first until the computer restarts.)
+
+A white glow hardly shows on a light window background; try
+GLOWCOLOR=FFD040 or a darker colour there.
+@ENDNODE
+
+@NODE IMAGES "Images and emblems"
+@{b}Images and emblems@{ub}
+
+All images are PNG files in ENVARC:sys/emblem. Any PNG works (true
+colour with alpha is best, palette and gray ones are fine too).
+
+ - Default images: up to 256x256 pixels. Workbench icons of AmigaOS 4.1
+   are mostly 64x64, so the sample images are 64x64.
+ - Emblems: up to 1024x1024; they are scaled to the size in the tool
+   type (up to 512x512). The sample emblems are 32x32.
+ - The normal and the selected image should have the same size.
+
+Changed or new images are noticed within two seconds and show on the next
+icon that is loaded. Emblem keeps up to 64 images (8 MB) in memory.
+
+The sample set is placeholder art, drawn by a script; it is meant to be
+replaced. Images:
+
+  DrawerNS, DrawerS         a drawer, closed and open (64x64)
+  DocumentNS, DocumentS     a page, normal and selected (64x64)
+
+Emblems (32x32): EmblemMusic, EmblemPictures, EmblemVideo,
+EmblemInternet, EmblemMail, EmblemPrefs, EmblemTools, EmblemGames,
+EmblemText, EmblemCode, EmblemDownload, EmblemArchive, EmblemStar,
+EmblemHeart, EmblemLock, EmblemCheck, EmblemWarning.
+
+Good emblems have a dark rim, so they read on any image and background.
+@ENDNODE
+
+@NODE EMBLEMICON "EmblemIcon command"
+@{b}EmblemIcon@{ub}
+
+  EmblemIcon FILES/M/A,TO/K,ALL/S,QUIET/S
+
+Turns icons into the Emblem format and back, or shows what they are.
+
+  EmblemIcon Work:Music                 format and tool types
+  EmblemIcon Work:Music TO=EMBLEM       to the Emblem format
+  EmblemIcon Work:Music TO=AMIGA        back to a normal icon
+  EmblemIcon Work:#? TO=EMBLEM          every icon in Work:
+  EmblemIcon Work: ALL                  list the Emblem icons in Work:
+                                        and all drawers below it
+  EmblemIcon Work: ALL TO=AMIGA         all of them back to normal icons
+
+FILES   icons, with or without ".info"; patterns work.
+TO      EMBLEM or AMIGA. Without TO the icons are shown.
+ALL     also look in the drawers below (links are not followed).
+QUIET   fewer messages; no tool types when showing.
+
+With a pattern or ALL, only Emblem icons are shown (and converted back
+with TO=AMIGA); with TO=EMBLEM, icons that are Emblem icons already are
+skipped. A count is printed at the end.
+
+The conversion keeps everything: the pictures, tool types, position,
+default tool, stack and drawer window. It needs the module to be
+running (installed, and the computer restarted).
+
+Return code 10 if an icon failed, 5 when stopped with Ctrl-C.
+@ENDNODE
+
+@NODE EXAMPLES "The examples"
+@{b}The examples@{ub}
+
+The drawer Examples (next to this guide) has ten Emblem icons. Look at
+their tool types (@{i}Icons > Information...@{ui}) to see how each is made:
+
+  Music       an emblem without a method: the settings decide
+  Pictures    SHADOW
+  Internet    GLOW
+  Games       size 0,0 = the emblem's own size; NONE
+  Downloads   another emblem
+  Private     DARK on the default images
+  Favourites  in the middle, and somewhere else when selected
+  Old stuff   GRAY on the image and the emblem
+  Tools       INTERNAL: the icon's own picture (a wrench) as the emblem
+  ReadMe      no IMAGE=: the emblem goes on the icon's own picture
+
+Copy them, or their tool types, as you like.
+@ENDNODE
+
+@NODE NOTES "Good to know"
+@{b}Good to know@{ub}
+
+ - The icon's own pictures are kept: saving an Emblem icon (snapshot,
+   Information window) never stores the composed picture in it. If a
+   program gives the icon a new picture (an icon editor), that becomes
+   its own picture.
+ - Icon editors and other programs see the composed picture. Programs
+   that want the icon's own picture can ask for it (see
+   @{"For programmers" link PROGRAMMERS}).
+ - Copying Emblem icons to a computer without Emblem: the icons can't be
+   shown there (you see Workbench's default icons). Convert them back
+   with "EmblemIcon ... TO=AMIGA" first.
+ - Speed: an Emblem icon loads about as fast as a normal one; one with a
+   default image and an emblem takes a little longer, mostly because
+   Workbench has more to draw for half-transparent pictures.
+ - Low memory: when an image can't be loaded, the icon shows its own
+   picture and Emblem tries again a little later.
+@ENDNODE
+
+@NODE REMOVE "Removing Emblem"
+@{b}Removing Emblem@{ub}
+
+Double-click Install and choose @{i}Remove it@{ui}. It
+
+ - turns the Emblem icons back into normal icons, in the drawers and
+   volumes you choose (all drawers below them too), with
+   "EmblemIcon ... ALL TO=AMIGA",
+ - deletes the documentation drawer with the examples,
+ - deletes the sample images (yours too, or none, if you choose so),
+ - deletes the settings, EmblemIcon and emblem.iconmodule.
+
+The module stays active until the computer restarts.
+
+Without the module, Emblem icons can't be shown: convert them before you
+remove it (Remove does that when you let it).
+@ENDNODE
+
+@NODE PROGRAMMERS "For programmers"
+@{b}For programmers@{ub}
+
+ - The file format is "Emblem" (an IFF FORM EMBL; Emblem-format.txt
+   describes it). icon.library saves an icon in it with
+   PutIconTags(name, icon, ICONPUTA_FileFormat, "Emblem", ...).
+ - GetIconTags() returns the composed pictures. To get the icon's own
+   pictures, pass the tag EMBLEMA_NoCompose (TAG_USER + 0x454D0001) with
+   TRUE; other modules ignore it.
+ - ICONGETA_FileFormat tells whether an icon is an Emblem icon.
+@ENDNODE
+
+@NODE HISTORY "History"
+@{b}History@{ub}
+
+@{b}1.0 (15.11.2026)@{ub}
+ - First release: emblem.iconmodule 1.0 and EmblemIcon 1.0, sample art,
+   examples, Install script (install, update, remove).
+@ENDNODE
+
+@NODE AUTHOR "Author and licence"
+@{b}Author and licence@{ub}
+
+Emblem by Björn Hagström (orgin), from openamiga.org project 34 "Emblem
+icon plugin" (2008). Written anew in 2026.
+
+Public domain (see LICENSE.txt): use, change and share it as you like.
+The sample images and icons are drawn by a script and are public domain
+too.
+@ENDNODE

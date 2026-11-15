@@ -1,0 +1,62 @@
+name: Emblem
+description: Icons with default images and emblems (icon module)
+version: @VERSION@
+date: @DATE@
+author: Björn Hagström
+submitter: Björn Hagström
+email:
+url:
+category: utility/workbench
+replaces:
+requirements: AmigaOS 4.1 (icon.library 51.15+), z.library 53
+license: Public domain
+minosversion: 4.1
+texttype: Plain text
+distribute: yes
+hend:
+
+Emblem lets an icon borrow a shared default image (a drawer, a page) and
+put an emblem on it: a small picture that says what is inside, like a
+note for music or a globe for internet things. The emblem can get a soft
+shadow or a glow, or be grayed, darkened or brightened.
+
+It is an icon module for icon.library (LIBS:IconModules), so Workbench,
+file managers and every other program that shows icons show the result.
+Change one image in ENVARC:sys/emblem and every icon that uses it
+changes with it. No patches.
+
+Four tool types do it:
+
+  IMAGE=DrawerNS
+  IMAGESELECTED=DrawerS
+  EMBLEM=EmblemMusic,28,28,34,32,SHADOW
+  EMBLEMSELECTED=EmblemMusic,28,28,34,32,SHADOW
+
+Features:
+
+- Default images and emblems as PNG files (any PNG; true colour with
+  alpha is best), scaled to the size the tool type asks for.
+- Effects per layer: SHADOW, GLOW, GRAY, DARK, BRIGHT, NONE; a settings
+  file chooses the effect for tool types without one, and the shadow and
+  glow look (offset, softness, opacity, colour).
+- INTERNAL: an icon's own picture as the emblem (a program's picture on
+  a drawer image).
+- The icon's own pictures are always kept: saving never stores the
+  composed picture, and converting back gives the original icon.
+- New or changed images show on the next icon load, without a restart.
+- Icons need the module's own file format; the EmblemIcon command
+  converts icons to it and back, one by one, by pattern, or whole drawer
+  trees.
+- Sample art (placeholder, public domain), ten example icons, an
+  AmigaGuide manual, and an Install script that installs, updates and
+  removes everything (removing turns Emblem icons back into normal ones).
+
+After installing, restart the computer: icon.library loads icon modules
+only when it starts.
+
+Based on openamiga.org project 34 "Emblem icon plugin" (2008), written
+anew.
+
+History:
+
+- 1.0 (15.11.2026): first release.
