@@ -4,3 +4,4 @@ art/icons/
 spike/*.iconmodule
 spike/*.iconmodule.debug
 spike/iconload
+__pycache__/
