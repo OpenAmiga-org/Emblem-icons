@@ -128,7 +128,7 @@ discourage, and it isn't a "plugin". **Recommendation: the icon module route.**
 | 3 | Composition engine, methods NONE/DARK/BRIGHT/GRAY, positions, scaling, clipping, INTERNAL | **DONE 2026-11-15**, renders approved by the user, see section 11 |
 | 4 | SHADOW, GLOW, emblem.prefs global method | **DONE 2026-11-15**, renders approved by the user, see section 12 |
 | 5 | Robustness: missing files, bad tool types, huge images, 8-bit screens, low memory, many icons | **DONE 2026-11-15**, see section 13 |
-| 6 | Sample artwork set (placeholder art from a script unless you have real art) + docs + LHA with Installer | **DONE 2026-11-15** (art waits for the user's approval), see section 14 |
+| 6 | Sample artwork set (placeholder art from a script unless you have real art) + docs + LHA with Installer | **DONE 2026-11-15**, art and examples approved by the user, see section 14 |
 
 Testing tools from the spike: `spike/iconload.c` (GetIconTags + format + tool types), DumpDebugBuffer
 logging, guest reboot to reload modules (icon.library opens modules only at startup).
@@ -419,6 +419,8 @@ Learned:
 - The Installation Utility writes its log only when it ends; in test mode the script ends without its
   last window.
 - AmigaDOS `;` starts a comment: several commands in one exec_cmd need new lines.
+
+The art (A01-A21, P01-P12) and the examples (X01-X10) were **approved by the user 2026-11-15**.
 
 Not done: the art is placeholder art; the readme is not submitted to OS4Depot (only on the user's go).
 
