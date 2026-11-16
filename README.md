@@ -35,12 +35,14 @@ Download: the package `Emblem.lha` is on the [releases page](https://github.com/
 | `tools/make_art.py` | draws the art set, the example's own picture and the package icons' pictures |
 | `tools/mkemblem.c` | host tool: writes Emblem icons (`make tools`) |
 | `tools/make_examples.py` | the package's example icons (and a render sheet of them) |
-| `tools/make_lha.sh` | puts the release together: `dist/Emblem.lha` + `dist/Emblem.readme` |
+| `tools/make_lha.sh` | puts the release together: `dist/Emblem.lha` + `dist/Emblem.readme` (`OUT=` and `RELEASES=/nonexistent` for test builds) |
+| `tools/iconset_build.py` | the glass icon set: mapping check, export, its own archive `dist/GlassIcons.lha` (package/iconset/README.md) |
 | `tools/os4/mkicon.c` | guest helper that saves the package's native icons (package/icons/README.md) |
 | `tools/render_sheet.py` | render sheets of composed icons (`step3`, `step4` or a JSON case list) |
 | `tests/host/` | host tests: format codec, PNG decoder (PngSuite vs pypng), tool types, engine |
 | `tests/host/render.c` | host renderer (`build/host/render`): the module's composition on the host |
 | `tests/os4/run_os4.py` | guest test runner (MCPd, target os4-amigaone), steps 1-6 |
+| `tests/os4/run_iconset.py` | guest test of the icon set's installer: install, update, Restore, install again, Remove |
 | `tests/os4/icontest.c` | guest helper: dump, make test icons, edit/snapshot/dup/layout+save |
 | `tests/os4/make_test_pngs.py`, `make_bad_files.py`, `memeater.c` | test images, broken files, low memory |
 | `docs/art/` | the test art of steps 3-5 (not the package's) |

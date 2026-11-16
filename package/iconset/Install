@@ -1,0 +1,184 @@
+; Install script for the @NAME@ icon set (AmigaOS 4 Installation Utility).
+; Made by tools/iconset_build.py from package/iconset/Install.
+;
+; Install: saves every stock icon the set changes (@COUNT@ icons of AmigaOS 4.1)
+; in @BACKUP@, with MD5 checksums, and checks the copies; then
+; copies the images to ENVARC:sys/emblem/@SET@ and turns the saved icons into
+; Emblem icons that use them. Nothing is changed before the copies are checked.
+; Remove: @BACKUP@/Restore puts the saved icons back, exactly;
+; then the images are deleted.
+;
+; Needs the Emblem icon module running and C:EmblemIcon 1.1 or newer.
+; Public domain.
+
+(set #app "@NAME@")
+(set @app-name "@NAME@")
+(set #bdir "@BACKUP@")
+(set #imgdir "ENVARC:sys/emblem/@SET@")
+(set #envimg "ENV:sys/emblem/@SET@")
+(set #marker (tackon #bdir "Installed"))
+(set #restore (tackon #bdir "Restore"))
+(set #prefs "ENVARC:sys/emblem.prefs")
+(set #envprefs "ENV:sys/emblem.prefs")
+
+; Automatic runs for the tests: ENV:IconSetInstallTest set to "install" or
+; "remove" takes that action with all defaults and ends without the last window.
+(set #test (getenv "IconSetInstallTest"))
+
+(welcome
+  (cat "This installs the " #app " icon set: new pictures for the drawers, disks, "
+       "file types and programs of AmigaOS 4.1 (@COUNT@ icons), shown by the Emblem icon module.\n\n"
+       "Every icon it changes is saved first, in " #bdir ", so the original icons "
+       "can be put back at any time."))
+
+(if (and (= @user-level 0) (= #test "")) (user 1))
+
+; --- install or remove -----------------------------------------------------
+
+(set #remove 0)
+(if (= #test "remove") (set #remove 1))
+(if (and (= #test "") (exists #marker))
+  (set #remove
+    (askchoice
+      (prompt (cat "The " #app " icon set is installed. What do you want to do?"))
+      (help @askchoice-help)
+      (choices "Install it again (update)" "Remove it: put the original icons back")
+      (default 0))))
+
+; ===========================================================================
+; Remove
+; ===========================================================================
+
+(procedure P_REMOVE
+  (if (not (exists #restore))
+    (abort (cat "There is no " #restore ", so the original icons can't be put back from here.")))
+  (working "Putting the original icons back")
+  (set #rc (run (cat "C:Execute >ENV:IconSetRestore.out \"" #restore "\" QUIET")))
+  (set #out (getenv "IconSetRestore.out"))
+  (run "C:Delete >NIL: ENV:IconSetRestore.out QUIET")
+  (if (<> #rc 0)
+    (abort (cat "Not every icon could be put back:\n\n" #out
+                "\nNothing else was removed. The saved icons are still in " #bdir ".")))
+
+  ; the images (ENV: has a copy of them after a restart)
+  (run (cat "C:Delete >NIL: \"" #imgdir "\" \"" #envimg "\" ALL QUIET FORCE"))
+
+  (if (<> #test "") (exit (quiet)))
+  (exit (cat #out "\nThe images of the set are deleted. Restart the computer so that every "
+             "program shows the original icons.\n\nThe saved icons stay in " #bdir
+             ": delete that drawer when you don't need it any more.")
+        (quiet))
+)
+
+(if #remove (P_REMOVE))
+
+; ===========================================================================
+; Install
+; ===========================================================================
+
+; --- requirements: without them nothing is changed --------------------------
+
+(set #missing "")
+(if (< (getversion "emblem.iconmodule" (resident)) 65536)
+  (set #missing (cat #missing "\n- the Emblem icon module, running (install Emblem, then restart the computer)")))
+(if (< (getversion "C:EmblemIcon") 65537)
+  (set #missing (cat #missing "\n- C:EmblemIcon 1.1 or newer (it comes with Emblem)")))
+(if (not (exists "C:MD5Sum"))
+  (set #missing (cat #missing "\n- C:MD5Sum (part of AmigaOS 4.1 Final Edition)")))
+(if (<> #missing "")
+  (abort (cat "The " #app " icon set needs:\n" #missing "\n\nNothing was changed.")))
+
+; --- 1. save the icons that will change, and check the copies -----------------
+
+; A backup without the marker was put back already (Restore deletes the
+; marker): keep it as .old and make a fresh one, so a backup never mixes the
+; original icons with ones changed after that.
+(if (and (not (exists #marker)) (exists #bdir))
+  (
+    (run (cat "C:Delete >NIL: \"" #bdir ".old\" \"" #bdir ".old.info\" ALL QUIET FORCE"))
+    (rename #bdir (cat #bdir ".old"))
+    (if (exists (cat #bdir ".info")) (rename (cat #bdir ".info") (cat #bdir ".old.info")))
+  )
+)
+
+(if (not (exists #bdir))
+  (makedir #bdir (prompt (cat "Creating " #bdir)) (help @makedir-help) (infos)))
+
+; An update keeps every saved icon and only adds the ones new to the set.
+(working "Saving the icons that will change")
+(run (cat "C:Execute >NIL: Scripts/Backup \"" #bdir "\""))
+(set #rc (run (cat "C:Execute >ENV:IconSetVerify.out Scripts/Verify \"" #bdir "\"")))
+(set #out (getenv "IconSetVerify.out"))
+(run "C:Delete >NIL: ENV:IconSetVerify.out QUIET")
+(if (<> #rc 0)
+  (abort (cat "The saved copies in " #bdir " are not the same as the icons:\n\n" #out
+              "\nNothing was changed.")))
+
+; --- 2. what puts them back: Restore, its icon, and the marker ----------------
+
+(textfile
+  (prompt "Writing Restore")
+  (help @textfile-help)
+  (dest #restore)
+  (append ".KEY QUIET/S\n.BRA {\n.KET }\n")
+  (append (cat "; Restore: puts back the icons saved before the " #app " icon set was\n"
+               "; installed, exactly as they were, and checks them by their MD5 checksums.\n"
+               "; Double-click it, or: Execute \"" #restore "\" [QUIET]\n"
+               "; It needs neither Emblem nor the Installer. Written by the set's Install.\n"))
+  (append (cat "Assign >NIL: IconSetBackup: \"" #bdir "\"\n"))
+  (include "Scripts/Restore.body"))
+(run (cat "C:Protect >NIL: \"" #restore "\" +s"))
+(copyfiles (source "Icons/Restore.info") (dest #bdir) (nogauge))
+(textfile
+  (dest #marker)
+  (append (cat "The " #app " icon set is installed. The original icons are in files/,\n"
+               "their MD5 checksums in SYS.md5 and ENVARC.md5. Restore puts them back.\n")))
+
+; --- 3. the images --------------------------------------------------------------
+
+(run (cat "C:Delete >NIL: \"" #imgdir "\" ALL QUIET FORCE"))
+(if (not (exists "ENVARC:sys/emblem"))
+  (makedir "ENVARC:sys/emblem" (prompt "Creating ENVARC:sys/emblem") (help @makedir-help)))
+(copyfiles
+  (prompt "Copying the images")
+  (help @copyfiles-help)
+  (source "Images/@SET@")
+  (dest #imgdir)
+  (all)
+  (nogauge))
+
+; --- 4. the emblems' shadow -----------------------------------------------------
+
+; The set was drawn with a shorter, softer emblem shadow than Emblem's own
+; default; its tool types say SHADOW. emblem.prefs was saved in step 1.
+(set #shadow 1)
+(if (= #test "")
+  (set #shadow
+    (askbool
+      (prompt "Give the emblems the shadow the set was drawn with?\n\n"
+              "(SHADOWOFFSET=2,2 SHADOWBLUR=2 SHADOWOPACITY=55 in " #prefs
+              ". It is the shadow of every emblem; Restore puts the file back.)")
+      (help @askbool-help)
+      (default 1))))
+(if (and #shadow (<> 0 (run (cat "C:Search >NIL: " #prefs " \"; @NAME@ icon set\" QUIET"))))
+  (
+    (run (cat "C:Echo >>" #prefs " \"; @NAME@ icon set: the shadow it was drawn with\""))
+    (run (cat "C:Echo >>" #prefs " \"SHADOWOFFSET=2,2\""))
+    (run (cat "C:Echo >>" #prefs " \"SHADOWBLUR=2\""))
+    (run (cat "C:Echo >>" #prefs " \"SHADOWOPACITY=55\""))
+    (run (cat "C:Copy >NIL: " #prefs " ENV:sys/ CLONE QUIET"))
+  )
+)
+
+; --- 5. turn the saved icons into Emblem icons ------------------------------------
+
+(working "Giving the icons their new pictures")
+(set #rc (run (cat "C:Execute >ENV:IconSetConvert.out Scripts/Convert \"" #bdir "\"")))
+(set #out (getenv "IconSetConvert.out"))
+(run "C:Delete >NIL: ENV:IconSetConvert.out QUIET")
+
+(if (<> #test "") (exit (quiet)))
+(exit (cat #out "\n\nRestart the computer, or close and open the drawer windows, to see them.\n\n"
+           "To put the original icons back: double-click Restore in " #bdir
+           ", or run this Install again and choose Remove.")
+      (quiet))

@@ -25,7 +25,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LHA="${LHA:-$HOME/linux_archivers/lha/lha}"
 RELEASES="${RELEASES:-/media/sf_claude_folder/releases}"
 STAGE="$ROOT/build/stage"
-OUT="$ROOT/dist/Emblem.lha"
+OUT="${OUT:-$ROOT/dist/Emblem.lha}"        # OUT=... for test builds
 REV="$ROOT/src/emblem.iconmodule_rev.h"
 
 ver=$(sed -n 's/^#define VERSION *\([0-9]*\)/\1/p' "$REV").$(sed -n 's/^#define REVISION *\([0-9]*\)/\1/p' "$REV")

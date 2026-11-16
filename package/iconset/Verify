@@ -1,0 +1,35 @@
+.KEY B/A
+.BRA {
+.KET }
+; Verify: checks the saved copies in the backup drawer B against the MD5
+; checksums of the original icons (SYS.md5, ENVARC.md5: one line per icon,
+; its name relative to SYS: or ENVARC:, so the same list checks the copies in
+; files/SYS and files/ENVARC). Return code 10 and the differing files when a
+; copy is missing or not the same. Run by the set's Install before it changes
+; anything. Public domain.
+
+FailAt 21
+Set bad 0
+
+If EXISTS "{B}/SYS.md5"
+  CD "{B}/files/SYS"
+  MD5Sum CHECK="{B}/SYS.md5" STATUS
+  If WARN
+    MD5Sum CHECK="{B}/SYS.md5"
+    Set bad 1
+  EndIf
+EndIf
+
+If EXISTS "{B}/ENVARC.md5"
+  CD "{B}/files/ENVARC"
+  MD5Sum CHECK="{B}/ENVARC.md5" STATUS
+  If WARN
+    MD5Sum CHECK="{B}/ENVARC.md5"
+    Set bad 1
+  EndIf
+EndIf
+
+CD SYS:
+If $bad EQ 1
+  Quit 10
+EndIf

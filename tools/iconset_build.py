@@ -1,5 +1,5 @@
 #!/home/claude/build/emblem-venv/bin/python
-"""iconset_build.py check|export [OUTDIR]
+"""iconset_build.py check|export [OUTDIR]|icons|package
 
 The glass icon set as a package: which stock icon gets which image, selected image and emblem
 (MAPPING), the final images (SOURCES, EMBLEMS), a check against a full listing of the guest
@@ -8,6 +8,14 @@ The glass icon set as a package: which stock icon gets which image, selected ima
   OUTDIR/images/<name>.png   the images for ENVARC:sys/emblem/<SET>/ (bases 64x64, emblems 28x28)
   OUTDIR/mapping.txt         one line per icon: ICONPATH|TOOLTYPE|TOOLTYPE...  (for the installer)
   docs/iconset_mapping.md    the same for people, and every stock icon NOT mapped (the gaps)
+
+  icons     build/iconset/icons/: the pictures of the package's own (native) icons as ARGB + a
+            mkicons.script; run it in the guest with mkicon (see package/icons/README.md) and copy
+            out/*.info to package/iconset/icons/
+  package   export + the set's archive dist/<NAME>.lha (stage build/stage-iconset): Install
+            (package/iconset/Install with the names filled in), Images/<SET>/, Scripts/Backup and
+            Scripts/Convert (generated from the mapping), Scripts/Verify, Scripts/Restore.body,
+            Icons/Restore.info (docs/iconset_plan.md "The icon set's installer")
 
 Everything comes from docs/iconset_plan.md (the user's decisions, 2026-11-15/16). The set's name is a
 working name, in one place (SET, or the environment ICONSET). Public domain.
@@ -25,6 +33,8 @@ import glass_symbols as gs  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 G = os.path.join(ROOT, "build", "glass")
 SET = os.environ.get("ICONSET", "glass")          # working name (the user names the set later)
+NAME = "GlassIcons"                                # the package drawer and archive (working name)
+BACKUP = "SYS:GlassIconsBackup"                    # where the set's Install saves the icons it changes
 AT = "0,0,36,35"                                  # emblems: their own size (28x28), lower right
 LISTING = os.path.join(ROOT, "build", "work", "inventory_full.txt")
 
@@ -222,9 +232,10 @@ def check():
 
 
 def tooltypes(base, em):
+    """SHADOW on the emblems: the set was drawn with it, whatever EMBLEMMETHOD the user has"""
     tt = [f"IMAGE={SET}/{base}", f"IMAGESELECTED={SET}/{base}_sel"]
     if em:
-        tt += [f"EMBLEM={SET}/{em},{AT}", f"EMBLEMSELECTED={SET}/{em},{AT}"]
+        tt += [f"EMBLEM={SET}/{em},{AT},SHADOW", f"EMBLEMSELECTED={SET}/{em},{AT},SHADOW"]
     return tt
 
 
@@ -245,6 +256,168 @@ def export(out):
         for path, b, e in MAPPING:
             fh.write(path + ".info|" + "|".join(tooltypes(b, e)) + "\n")
     print(f"{len(used)} bases (x2), {len(ems)} emblems -> {img}; {len(MAPPING)} icons -> mapping.txt")
+
+
+# --- the set's package ------------------------------------------------------------
+
+LHA = os.environ.get("LHA", os.path.expanduser("~/linux_archivers/lha/lha"))
+PKG = os.path.join(ROOT, "package", "iconset")
+SHADOW_PREFS = "EMBLEMMETHOD=SHADOW\nSHADOWOFFSET=2,2\nSHADOWBLUR=2\nSHADOWOPACITY=55\n"
+
+
+def split(path):
+    """'SYS:Prefs/Printer.info' -> ('SYS', 'Prefs/Printer.info')"""
+    root, _, rel = path.partition(":")
+    assert root in ("SYS", "ENVARC") and rel, path
+    return root, rel
+
+
+def files_changed():
+    """every file the Install changes: the mapped icons and the settings file"""
+    return [p + ".info" for p, _, _ in MAPPING] + ["ENVARC:sys/emblem.prefs"]
+
+
+def script_backup():
+    """Scripts/Backup B: copies every file that exists and isn't in the backup yet to
+    B/files/<root>/<path> (Copy CLONE) and adds its MD5 to B/<root>.md5, the name relative to
+    the root; an update so never replaces a saved original"""
+    L = [".KEY B/A", ".BRA {", ".KET }",
+         "; Backup: made by tools/iconset_build.py from the set's mapping. Saves every file the",
+         "; set's Install changes (if it exists and isn't saved yet) and its MD5 checksum.",
+         "; Public domain.", "", "FailAt 21", ""]
+    dirs = sorted({f"{r}/{os.path.dirname(rel)}".rstrip("/") for r, rel in map(split, files_changed())})
+    for d in dirs:
+        L.append(f'MakeDir >NIL: "{{B}}/files/{d}" ALL')
+    L.append("")
+    for path in files_changed():
+        root, rel = split(path)
+        L += [f'If EXISTS "{path}"',
+              f'  If NOT EXISTS "{{B}}/files/{root}/{rel}"',
+              f'    Copy "{path}" "{{B}}/files/{root}/{rel}" CLONE QUIET',
+              f'    CD {root}:',
+              f'    MD5Sum "{rel}" >>"{{B}}/{root}.md5"',
+              "  EndIf"]
+        if path == "ENVARC:sys/emblem.prefs":
+            # no settings file before: Restore deletes the one the Install writes
+            L += ["Else", '  If NOT EXISTS "{B}/files/ENVARC/sys/emblem.prefs"',
+                  '    Echo >"{B}/NoPrefs" "There was no ENVARC:sys/emblem.prefs before."', "  EndIf"]
+        L.append("EndIf")
+    L += ["CD SYS:", ""]
+    return "\n".join(L)
+
+
+def script_convert():
+    """Scripts/Convert B: every icon that is saved in B becomes an Emblem icon with its tool
+    types; changed default icons are copied to ENV:Sys (the ones in use)"""
+    L = [".KEY B/A", ".BRA {", ".KET }",
+         "; Convert: made by tools/iconset_build.py from the set's mapping. Only icons with a saved",
+         "; copy in the backup drawer are changed. Public domain.", "",
+         "FailAt 21", "Set done 0", "Set failed 0", ""]
+    for path, b, e in MAPPING:
+        root, rel = split(path + ".info")
+        L += [f'If EXISTS "{path}.info"',
+              f'  If EXISTS "{{B}}/files/{root}/{rel}"',
+              f'    C:EmblemIcon >NIL: "{path}.info" TO=EMBLEM SET="{"|".join(tooltypes(b, e))}" QUIET',
+              "    If WARN",
+              f'      Echo "Not changed: {path}.info"',
+              "      Set failed `Eval $failed + 1`",
+              "    Else",
+              "      Set done `Eval $done + 1`"]
+        if root == "ENVARC" and rel.lower().startswith("sys/"):
+            L.append(f'      Copy >NIL: "{path}.info" "ENV:{rel}" CLONE QUIET')
+        L += ["    EndIf", "  EndIf", "EndIf"]
+    L += ["", 'Echo "$done icons have their new pictures."', "If $failed GT 0",
+          '  Echo "$failed could not be changed (listed above)."', "  Quit 5", "EndIf", ""]
+    return "\n".join(L)
+
+
+def icon_pictures():
+    """the package's own icons (native, made in the guest by mkicon): name -> (normal, selected,
+    type, default tool, tool types, stack, window); pictures composed from the set's images by the
+    module's engine (build/host/render) with the set's shadow"""
+    return {
+        NAME: (("drawer", "EmPicture"), "DRAWER", None, (), None, (80, 60, 420, 200)),
+        "Install": (("p_installer", None), "PROJECT", "SYS:Utilities/Installer",
+                    (f"APPNAME={NAME}", "MINUSER=AVERAGE", "DEFUSER=AVERAGE", f"LOGFILE=T:{NAME}_install.log"),
+                    32768, None),
+        "Restore": (("file", "EmCode"), "PROJECT", "C:IconX",
+                    (f"WINDOW=CON:60/40/620/320/{NAME} Restore/AUTO/CLOSE/WAIT",), 16384, None),
+    }
+
+
+def icons(out):
+    import subprocess
+    import tempfile
+    img = os.path.join(ROOT, "build", "iconset", SET, "images")
+    os.makedirs(out, exist_ok=True)
+    lines = ["; made by tools/iconset_build.py icons: run in a drawer with mkicon and the .argb files",
+             "FailAt 21", "MakeDir >NIL: out"]
+    with tempfile.TemporaryDirectory() as tmp:
+        prefs = os.path.join(tmp, "emblem.prefs")
+        open(prefs, "w").write(SHADOW_PREFS)
+        for name, ((base, em), typ, tool, tts, stack, window) in icon_pictures().items():
+            tt = [f"IMAGE={base}", f"IMAGESELECTED={base}_sel"]
+            if em:
+                tt += [f"EMBLEM={em},{AT}", f"EMBLEMSELECTED={em},{AT}"]
+            pre = os.path.join(tmp, "r")
+            r = subprocess.run([os.path.join(ROOT, "build", "host", "render"), "--dir", img, "--prefs", prefs,
+                                "--out", pre] + tt, capture_output=True, text=True).stdout
+            assert "composed=1" in r, r
+            for i, suffix in ((1, ""), (2, ".sel")):
+                im = Image.open(f"{pre}_{i}.png").convert("RGBA")
+                assert im.size == (64, 64), im.size
+                im.save(os.path.join(out, f"{name}{suffix}.png"))
+                open(os.path.join(out, f"{name}{suffix}.argb"), "wb").write(
+                    b"".join(bytes((a, r_, g, b_)) for (r_, g, b_, a) in im.get_flattened_data()))
+            args = [f'"out/{name}"', f"ARGB={name}.argb", f"SELECTED={name}.sel.argb", "TYPE=" + typ]
+            if tool:
+                args.append(f'"TOOL={tool}"')
+            if stack:
+                args.append(f"STACK={stack}")
+            if window:
+                args.append("WINDOW=%d,%d,%d,%d" % window)
+            args += [f'"TT={t}"' for t in tts]
+            lines.append("mkicon " + " ".join(args))
+    open(os.path.join(out, "mkicons.script"), "w").write("\n".join(lines) + "\n")
+    print(f"{len(icon_pictures())} icon pictures + mkicons.script -> {out}")
+
+
+def package():
+    import shutil
+    import subprocess
+    exp = os.path.join(ROOT, "build", "iconset", SET)
+    export(exp)
+    stage = os.path.join(ROOT, "build", "stage-iconset")
+    shutil.rmtree(stage, ignore_errors=True)
+    d = os.path.join(stage, NAME)
+    os.makedirs(os.path.join(d, "Scripts"))
+    os.makedirs(os.path.join(d, "Icons"))
+    shutil.copytree(os.path.join(exp, "images"), os.path.join(d, "Images", SET))
+    inst = open(os.path.join(PKG, "Install")).read()
+    for k, v in (("@NAME@", NAME), ("@SET@", SET), ("@BACKUP@", BACKUP), ("@COUNT@", str(len(MAPPING)))):
+        inst = inst.replace(k, v)
+    assert "@" not in inst.replace("@app-name", "").replace("@user-level", "").replace("@askchoice-help", "") \
+        .replace("@askbool-help", "").replace("@makedir-help", "").replace("@textfile-help", "") \
+        .replace("@copyfiles-help", ""), "a placeholder is left in Install"
+    open(os.path.join(d, "Install"), "w", encoding="latin-1").write(inst)
+    open(os.path.join(d, "Scripts", "Backup"), "w").write(script_backup())
+    open(os.path.join(d, "Scripts", "Convert"), "w").write(script_convert())
+    for f in ("Verify", "Restore.body"):
+        shutil.copy(os.path.join(PKG, f), os.path.join(d, "Scripts", f))
+    ic = os.path.join(PKG, "icons")
+    missing = [n for n in icon_pictures() if not os.path.exists(os.path.join(ic, n + ".info"))]
+    if missing:
+        sys.exit(f"package/iconset/icons/ has no {', '.join(missing)}.info: run `iconset_build.py icons` and mkicon")
+    shutil.copy(os.path.join(ic, NAME + ".info"), os.path.join(stage, NAME + ".info"))
+    shutil.copy(os.path.join(ic, "Install.info"), os.path.join(d, "Install.info"))
+    shutil.copy(os.path.join(ic, "Restore.info"), os.path.join(d, "Icons", "Restore.info"))
+    out = os.path.join(ROOT, "dist", NAME + ".lha")
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    if os.path.exists(out):
+        os.remove(out)
+    subprocess.run([LHA, "aq2o5", out, NAME + ".info", NAME], cwd=stage, check=True)
+    n = sum(len(f) for _, _, f in os.walk(stage))
+    print(f"{n} files -> {out} ({os.path.getsize(out) // 1024} KB)")
 
 
 def doc(gaps):
@@ -269,10 +442,16 @@ def main():
     print(f"{len(MAPPING)} icons mapped, {sum(len(v) for v in gaps.values())} stock icons not mapped in {len(gaps)} drawers,"
           f" {bad} problems")
     doc(gaps)
-    if len(sys.argv) > 1 and sys.argv[1] == "export":
-        if bad:
-            sys.exit("not exported: fix the problems first")
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "check"
+    if cmd in ("export", "package", "icons") and bad:
+        sys.exit(f"no {cmd}: fix the problems first")
+    if cmd == "export":
         export(sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "build", "iconset", SET))
+    elif cmd == "icons":
+        export(os.path.join(ROOT, "build", "iconset", SET))
+        icons(os.path.join(ROOT, "build", "iconset", "icons"))
+    elif cmd == "package":
+        package()
     sys.exit(1 if bad else 0)
 
 

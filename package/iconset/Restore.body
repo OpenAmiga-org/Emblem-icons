@@ -1,0 +1,97 @@
+
+; The set's Install writes Restore into the backup drawer: .KEY, the comment
+; and the Assign of IconSetBackup: to that drawer, then this.
+; Public domain.
+
+FailAt 21
+
+If NOT EXISTS IconSetBackup:files
+  Echo "There are no saved icons in this drawer."
+  Assign >NIL: IconSetBackup: REMOVE
+  Quit 10
+EndIf
+
+If "{QUIET}" EQ ""
+  Echo "This puts back the icons that were saved before the icon set"
+  Echo "was installed, exactly as they were. The saved copies are"
+  Echo "checked first, and every icon again when it is back."
+  Echo ""
+  Ask "Put the original icons back now? (y/n)"
+  If NOT WARN
+    Echo "Nothing was changed. Close this window."
+    Assign >NIL: IconSetBackup: REMOVE
+    Quit
+  EndIf
+EndIf
+
+Set bad 0
+
+; 1. the saved copies must be the same as when they were saved
+If EXISTS IconSetBackup:SYS.md5
+  CD IconSetBackup:files/SYS
+  MD5Sum CHECK=IconSetBackup:SYS.md5 STATUS
+  If WARN
+    Echo "These saved copies have changed since they were saved:"
+    MD5Sum CHECK=IconSetBackup:SYS.md5
+    Set bad 1
+  EndIf
+EndIf
+If EXISTS IconSetBackup:ENVARC.md5
+  CD IconSetBackup:files/ENVARC
+  MD5Sum CHECK=IconSetBackup:ENVARC.md5 STATUS
+  If WARN
+    Echo "These saved copies have changed since they were saved:"
+    MD5Sum CHECK=IconSetBackup:ENVARC.md5
+    Set bad 1
+  EndIf
+EndIf
+CD SYS:
+If $bad EQ 1
+  Echo "Nothing was put back."
+  Assign >NIL: IconSetBackup: REMOVE
+  Quit 10
+EndIf
+
+; 2. put them back; the ENVARC: ones also into ENV:, which has the copies
+;    in use (the default icons, the settings)
+If EXISTS IconSetBackup:files/SYS
+  Copy IconSetBackup:files/SYS SYS: ALL CLONE QUIET
+EndIf
+If EXISTS IconSetBackup:files/ENVARC
+  Copy IconSetBackup:files/ENVARC ENVARC: ALL CLONE QUIET
+  Copy IconSetBackup:files/ENVARC ENV: ALL CLONE QUIET
+EndIf
+If EXISTS IconSetBackup:NoPrefs
+  Delete >NIL: ENVARC:sys/emblem.prefs ENV:sys/emblem.prefs QUIET
+EndIf
+
+; 3. check every icon that is back
+If EXISTS IconSetBackup:SYS.md5
+  CD SYS:
+  MD5Sum CHECK=IconSetBackup:SYS.md5 STATUS
+  If WARN
+    Echo "These are not the same as their saved copies:"
+    MD5Sum CHECK=IconSetBackup:SYS.md5
+    Set bad 1
+  EndIf
+EndIf
+If EXISTS IconSetBackup:ENVARC.md5
+  CD ENVARC:
+  MD5Sum CHECK=IconSetBackup:ENVARC.md5 STATUS
+  If WARN
+    Echo "These are not the same as their saved copies:"
+    MD5Sum CHECK=IconSetBackup:ENVARC.md5
+    Set bad 1
+  EndIf
+EndIf
+CD SYS:
+If $bad EQ 1
+  Echo "Not every icon is back (see above). The saved copies stay here."
+  Assign >NIL: IconSetBackup: REMOVE
+  Quit 10
+EndIf
+
+Delete >NIL: IconSetBackup:Installed QUIET
+Echo "Every saved icon is back, checked by its MD5 checksum."
+Echo "Restart the computer so that every program shows them."
+Assign >NIL: IconSetBackup: REMOVE

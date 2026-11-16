@@ -306,7 +306,7 @@ EmblemIcon, settings, documentation). The glass icon set gets an installation sc
 needs the plugin, copies the set's images, converts the system's icons to Emblem icons after a backup,
 and its remove restores the backed-up originals.
 - The plugin keeps only a SMALL sample set (for its examples), with a script to remove the samples so
-  the user can clear the system of them. **Done (2026-11-16, not committed):** the package ships the 11
+  the user can clear the system of them. **Done (2026-11-16, commit 887e198):** the package ships the 11
   images its examples use (`tools/make_examples.py --images`: DrawerNS/S + 9 emblems; was 21);
   `package/Emblem/RemoveSamples` (AmigaDOS, IconX icon P13, installed with the documentation) deletes
   the samples of this and every earlier version from ENVARC:/ENV:sys/emblem and nothing else (asks
@@ -325,6 +325,44 @@ and its remove restores the backed-up originals.
 - Names still to decide (the user will work them out separately): what the new icon type is called
   (today "Emblem": the module emblem.iconmodule, EMBLEM= tool types) and what the icon set is called
   (working name "glass").
+
+### The icon set's installer (design, 2026-11-16)
+
+Working names, each in one place in `tools/iconset_build.py`: images `ENVARC:sys/emblem/glass/`, package
+drawer and archive `GlassIcons` (`dist/GlassIcons.lha`), backup drawer `SYS:GlassIconsBackup`.
+
+- **Needs:** emblem.iconmodule running (installed + restarted: EmblemIcon can only write Emblem icons
+  then), C:EmblemIcon 1.1 or newer (SET), C:MD5Sum (part of OS 4.1 FE: `MD5Sum ... >>list`,
+  `MD5Sum CHECK=list STATUS` gives 5 on any changed or missing file). Missing → stops, changes nothing.
+- **Backup first** (`Scripts/Backup`, generated from the mapping): every mapped icon that exists is copied
+  with `Copy CLONE` into `SYS:GlassIconsBackup/files/<root>/<path>` (root SYS or ENVARC; ENVARC:Sys def_
+  icons and ENVARC:sys/emblem.prefs), and its MD5 goes into `<root>.md5` with the name relative to the
+  root, so one list checks the originals (CD SYS:) and the copies (CD files/SYS). An icon already in the
+  backup is never copied again: an update keeps the first backup and only adds icons new to the set.
+- **Checked before any change** (`Scripts/Verify`): every copy against its list, and every original
+  saved in this run against the same list. Any difference → stop, nothing changed.
+- **Then:** the marker `Installed` and the `Restore` script (+ icon) go into the backup drawer; the images
+  are copied; the emblem shadow the set was drawn with (SHADOWOFFSET=2,2, SHADOWBLUR=2, SHADOWOPACITY=55)
+  is added to ENVARC:/ENV:sys/emblem.prefs (saved first; asked, default yes); the emblem tool types say
+  SHADOW, so the set looks as approved whatever EMBLEMMETHOD says; `Scripts/Convert` (generated) turns
+  every BACKED-UP icon into an Emblem icon with `EmblemIcon ... TO=EMBLEM SET="..."` and copies the
+  changed def_ icons to ENV:Sys. Failures are listed; the backup and Restore are already in place.
+- **Restore** (`SYS:GlassIconsBackup/Restore`, plain AmigaDOS: no plugin, no Installer; double-click it
+  (IconX, asks first) or `Execute SYS:GlassIconsBackup/Restore [QUIET]`): checks the copies against the
+  lists (any change → restores nothing and names the files), copies them back with `Copy ALL CLONE`
+  (ENVARC files also to ENV:), checks every restored file against the lists and names any mismatch;
+  on success deletes the marker. The images stay (Install → Remove deletes them).
+- **Install again:** with the marker = update (backup kept, new icons added). Without it (the set was
+  restored) an old backup is renamed `SYS:GlassIconsBackup.old` (replacing an older .old) and a fresh one
+  is made, so a backup is never mixed with icons changed after a restore.
+- **Remove** (Install): runs Restore QUIET; only when it succeeds deletes the images (ENVARC: and ENV:).
+  The backup drawer stays until the user deletes it.
+- **Built and tested 2026-11-16:** `tools/iconset_build.py package` → dist/GlassIcons.lha (230 files,
+  1.3 MB; package/iconset/README.md). Guest cycle `tests/os4/run_iconset.py`: 60/60 — 233 files saved
+  (MD5 + date + protection + comment equal), 232 icons become Emblem icons (10 → 242 in SYS:), 7 composed
+  exactly like the host renders, update keeps the backup, Restore and Remove put every file back exactly
+  (also the ENV: copies), install after Restore keeps the old backup as .old. Install takes ~45 s.
+  Double-click Restore (IconX, y) checked by hand. Screenshot: build/os4-qemu/iconset_installed.png.
 
 Earlier notes:
 
