@@ -1,0 +1,306 @@
+# Glass icon set: inventory and grouping proposal
+
+For Emblem 1.1 (user's decision 2026-11-15). Style: the approved glass preview
+(docs/iconsets/glass/glass_preview.png): glenz glass, glowing light-blue hairline edges, objects facing
+down right, floor reflection; emblems as glass tiles in deep red, green, blue and violet (R3, G3, B3, V3).
+Made group by group; each group is decided together before it is drawn.
+
+## What a stock OS 4.1 FE Update 3 Workbench has (QEMU guest, 2026-11-15)
+
+- `ENVARC:Sys`: 167 entries: about 95 default icons (`def_*`) for files, disks and devices, 45 mouse
+  pointers (`def_*pointer`), 3 frames, 3 overlays, `disk_system`, `disk_work`.
+- `SYS:`: 12 top-level drawers, 35 Prefs editors, 25 Utilities, 15 System programs, 6 Storage
+  drawers, Internet and Emulation drawers, documentation.
+
+## Tested: default icons can be Emblem icons
+
+`ENV:Sys/def_ascii.info`, turned into an Emblem icon with `IMAGE=GlassFile` and
+`EMBLEM=GlassStar,0,0,36,35`, was used by Workbench for a text file without an icon, composed by the
+module (glass file image with the star emblem). So one "file" base plus a type emblem covers every
+file type through the def_ icons, with no change to Workbench or DefIcons.
+
+## Three kinds of icon
+
+| Kind | What | Example |
+|---|---|---|
+| **A. generic** | one shared base image + an emblem that says what it is | every drawer = glass drawer + emblem; every picture file = glass file + picture emblem |
+| **B. unique** | an image of its own + a common emblem for its family | each Prefs editor its own glass object + the prefs emblem |
+| **C. left alone** | not icons, or better kept as they are | mouse pointers, frames, overlays |
+
+## General rule (user, 2026-11-15)
+
+Files and drawers that have no .info file in a normal OS 4.1 install (C, L, S, Libs, Classes, Locale,
+SObjs, Fonts, Kickstart, the Storage subdrawers AudioModes, Internet, Languages, Locale, most files; the full list is in docs/iconset_inventory.md) keep having none: they inherit the
+default icon for their type. For them the work is the def_ icon in the new style (for drawers just
+`def_drawer`). Hardly anyone shows files without icons on Workbench, and file managers usually show
+no icons anyway.
+
+## Drawers are drawers (user, 2026-11-16)
+
+Every icon that belongs to a drawer is the glass drawer + an emblem, never an object of its own, so
+no drawer is drawn as a program by mistake (Presets in Prefs was, and was corrected). The kind of
+every icon comes from the guest, not from memory: `docs/iconset_inventory.md` (made by
+`tools/iconset_inventory.py` from a `List ... LFORMAT "%P%N|%L"` of the guest), and before each batch
+`tools/iconset_inventory.py build/work/inventory.txt check NAME...` must report no drawer.
+
+Drawers with icons of their own below the top level (found 2026-11-16; ALL APPROVED 2026-11-16, sheets
+docs/iconsets/glass/sub_*.png, program emblems progemblems.png):
+
+| Where | Drawers with an icon |
+|---|---|
+| SYS:Prefs | Presets (decided: EmPresets, blue) |
+| SYS:Utilities | AmiGS, AmiPDF, Blankers, Commodities, Dockies, Ghostscript, SGrab (APPROVED, sub_utilities.png) |
+| SYS:System | AmiUpdate, Python (APPROVED, sub_system.png) |
+| SYS:Internet | Action logs, Connection logs, Connections, Reports, Templates (APPROVED, sub_internet.png) |
+| SYS:Emulation | AmigaDisks, AmigaROMs (APPROVED, sub_emulation.png) |
+| SYS:MUI | Demos, Docs, Icons, Images, Libs, Patterns, Presets, Rexx (APPROVED, sub_mui.png) |
+| SYS:Storage | Datatypes, DOSDrivers, KeyMaps, Monitors, NetInterfaces, Printers (APPROVED, sub_storagedevs.png) |
+| SYS:Devs | DataTypes, DOSDrivers, KeyMaps, Monitors, NetInterfaces, Printers (APPROVED, sub_storagedevs.png) |
+| SYS:Documentation | AmiSSL (APPROVED, sub_documentation.png; SFTPHandler is ours, not stock) |
+
+(Correction: the Storage and Devs subdrawers DO have icons in a stock install; they are drawers.)
+
+**Decided with the user 2026-11-16:** each sub-drawer emblem takes its PARENT drawer's emblem colour
+(Devs violet, Storage green, MUI and Internet blue, Emulation green, Utilities violet, System red,
+Documentation violet); the symbol says what the drawer holds, so Storage and Devs share symbols and
+differ by colour (stored / active). Program drawers (AmiGS, AmiPDF, Ghostscript, SGrab, AmiUpdate,
+Python): our own glass emblems designed after how their icons look today (looked at on the guest).
+Reviewed per parent drawer, a sheet each, symbols drafted first. The user (2026-11-16): for a program drawer, look INSIDE it at the main program's own icon first
+(larger, and without the stock blue drawer). References kept in docs/iconsets/glass/reference/:
+os41_program_icons.png (AmiGS: page + PS + magnifier; AmiPDF: page + PDF swoosh + magnifier;
+Ghostscript: no program icon, its drawer shows a printer; SGrab: a camera; AmiUpdate: a gear with a red
+button; Python: a Boing ball with a ring), os41_utilities.png, os41_system.png and
+os41_category_drawers.png (the stock drawer symbols of Internet, MUI, Storage, Devs, Emulation).
+
+## Proposed groups, in the order to make them
+
+### 1. Drawers (A)
+
+One base: the glass drawer (closed; selected = open). An emblem per role:
+
+| Drawer | Emblem |
+|---|---|
+| Prefs | prefs (gear) |
+| Utilities | tools (wrench) |
+| System | system (chip) |
+| Storage | storage (stacked plates) |
+| WBStartup | startup (power) |
+| Devs, Storage/DOSDrivers, Monitors, Printers, KeyMaps, NetInterfaces, Datatypes | devices (plug) / per drawer? |
+| Fonts, Locale, Libs, Classes, C, L, S, SObjs, Kickstart | system or code emblems? |
+| Internet | internet (globe) |
+| Emulation | games? / Amiga (boing ball?) |
+| Documentation | text/book |
+| MUI | ? |
+| any other drawer (def_drawer) | none |
+
+**APPROVED by the user 2026-11-16** (docs/iconsets/glass/drawers.png: DR01 def_drawer, DR02-DR11 SYS: drawers, normal + selected).
+
+**Decided (user, 2026-11-15):**
+- The SYS: drawers that have icons each get their own emblem (table above).
+- Drawers without icons (C, L, S, Libs, ...): no icons; `def_drawer` becomes the glass drawer.
+- Program drawers (e.g. Work:IBrowse): `EMBLEM=INTERNAL`: the glass drawer with the drawer's own
+  picture as the emblem, converted with `EmblemIcon ... TYPE=DRAWER TO=EMBLEM SET=...` (EmblemIcon 1.1).
+- Emblem placement: **lower right** (`EMBLEM=Name,0,0,36,35`), chosen from docs/iconsets/glass/drawers.png
+  (user, 2026-11-16).
+- Emblems: see-through coloured glass, not painted: less opaque, with Tron-style glowing edges
+  (user, 2026-11-16).
+- **No emblem may contain the old generic drawer** (user, 2026-11-16). Many program drawers'
+  pictures are the stock drawer, some with a logo painted on (Work:Games/Settlers2), so INTERNAL on
+  them is wrong. A program drawer gets the glass drawer and, as its emblem, only a real logo or the
+  program's own picture (e.g. the tool icon inside the drawer) when there is a usable one; otherwise
+  no emblem. How to supply those emblems is still open (a logo image per program, or a tool that
+  takes the picture of the program's icon).
+
+### 2. Disks and devices (A, a base per physical kind)
+
+| Base | def_ icons |
+|---|---|
+| hard disk (the glass drive) | def_disk, disk_system (+ system emblem), disk_work (+ work/home emblem), def_hdf |
+| floppy | def_DF0-3, def_FD0-1, def_PC0, def_crossdos |
+| optical disc | def_CD0-6, def_cd, def_dvd, def_cdda |
+| RAM | def_ram, def_RAD |
+| removable (stick/cartridge) | def_zipdisk, def_jazdisk, def_modisk, def_pccard (USB too) |
+| network | network volumes (handlers like SFTP:, Nextcloud). (def_ftp and def_http are NOT here: on the guest they are project icons opened by MultiView, i.e. files; they are in group 3, the page + globe, FT03) |
+| bad disk | def_baddisk (+ warning emblem) |
+| trashcan | def_trashcan, SYS:Trashcan: empty / full (selected) |
+
+**Decided (user, 2026-11-16):** all these kinds (hard disk = the glass drive; floppy, optical disc, RAM
+module, removable = USB stick, network node, bad disk = drive + warning emblem, trashcan empty/full);
+disk_system and disk_work = the same glass drive with an emblem (system / home); a device's selected
+image = the same object lit from inside (brighter edges and inner light).
+
+**APPROVED by the user 2026-11-16** (docs/iconsets/glass/devices.png, devices_flip.gif, disc_final.png):
+DV01-DV10. The disc: clear, low refraction (IOR 1.12, so it does not look like a horn), turned 8 degrees
+right and leaning back 25 degrees, no metallic data layer. The floppy's selected image: the shutter slides
+left by about a fifth of its width (like a real 3.5" floppy), its window then over the access hole;
+approved 2026-11-16 (floppy_final.png, floppy_flip.gif).
+
+### 3. Files by type (A, through the def_ icons) — APPROVED 2026-11-16
+
+Sheet: docs/iconsets/glass/files.png, files_flip.gif (FT01-FT14, AR01-AR11).
+
+**Decided with the user 2026-11-16:** every file type uses the approved G05 glass page (with its text
+lines) plus a type emblem lower right; plain text and def_project have no emblem. Archives use the
+glass crate (G08) plus a tile with the format letters. Selected image: something moves, only that part
+(the page's folded corner lifts; the crate's lid lifts), same framing; no glow.
+
+**Page selected state, APPROVED 2026-11-16** (the user's own design, PG6, docs/iconsets/glass/page_split.png,
+page_split_flip.gif): the page splits in two. The back part (no fold) stays in place; the front part is a
+single thin page (with the fold and the lines) turned 30 degrees towards the viewer on the left edge,
+where the two stay joined. Rejected: the corner lifting (PG1-PG3), the page hovering (PG4), two equal
+halves (PG5). Then (user): the normal image is the same two parts closed, the fold on the front page
+only, the back part's full corner behind it (PG7, docs/iconsets/glass/page_split.png). APPROVED 2026-11-16.
+
+**Crate selected state, APPROVED 2026-11-16:** lid opened 25 degrees on the back hinge (user's pick); the body
+open at the top (no second lid under the lid), a third small crate stacked inside so the contents show
+in the opening; the straps are bands on the outside, the one over the top only while closed (LD5,
+docs/iconsets/glass/lid_variants.png).
+
+| Emblem (colour) | def_ icons |
+|---|---|
+| none (plain page) | ascii, ftxt, rtf, tex, file, project |
+| EmDocument, new (violet) | pdf, ps, eps |
+| EmInternet, globe (blue) | html, http, ftp |
+| EmDocs, book (violet) | guide, amigaguide |
+| EmPicture (blue) | picture, ilbm, jpeg, gif, png, bmp, tiff, brush, animbrush |
+| EmMusic (red) | sound, 8svx, aiff, aifc, wav, mp2, mp3, mpa, ahx, sfx, cdda |
+| EmVideo, new (red) | video, anim, avi, mpeg, wmv, asf, cdxl |
+| EmCode, new (green) | script, arexx, py, pyc, php, js, make, fd, install (Installer scripts) |
+| EmFont, new (violet) | font, outlinefont |
+| EmSystem, chip (red) | library, datatype, loadmodule, kickstart, bin, sys, system |
+| EmDevs, plug (violet) | device, handler, filesystem, mount, monitor |
+| EmMUI, window (blue) | mui |
+| EmPrefs, gear (blue) | prefs |
+| EmStorage, stack (green) | hdf, mdf (disk images) |
+
+Archives (crate + letters, green): lha and lharc LHA, lzx LZX, zip and pkzip ZIP, gzip GZ, bz2 BZ2,
+tar TAR, 7zip 7Z, arj ARJ, rar RAR, zoo ZOO; def_archive = the crate without a tile.
+
+Tools without an icon of their own: def_tool = the glenz crystal (G10); selected (user 2026-11-16): the crystal
+risen and lit from within, the beam to its pedestal longer and brighter (ICON tool_open; docs/iconsets/glass/crystal.png). APPROVED.
+
+### 4. Programs (B: their own image + a family emblem)
+
+| Family | Programs | Family emblem |
+|---|---|---|
+| Prefs editors (35) | AHI, AmigaInput, ASL, Compatibility, Console, DefIcons, DOS, Font, GUI, Input, Internet, Locale, Notifications, Palette, Picasso96Mode, Pointer, PopupMenu, Presets, Printer, PrinterGfx, PrinterPS, ScreenBlanker, ScreenMode, Screens, Serial, Sound, Time, Timezone, UBoot, Updates, URL, USB, WBPattern, WBStartup, Workbench | prefs |
+| Utilities (20 programs) | Calculator, Clock, FileCompare, GraphicDump, IconEdit, InitPrinter, Installation Utility, KeyShow, LogViewer, MEmacs, MultiView, NotePad, PartitionWizard, PlayCD, PrefsObjectsEditor, PrintFiles, RawDisk, ShowConfig, UnArc, USBInspector (DRAWERS, not programs: AmiGS, AmiPDF, Blankers, Commodities, Dockies, Ghostscript, SGrab) | none (decided) |
+| System (13 programs) | BIOSUpdater, Find, FixFonts, Format, FormatCDRW, GrimReaper, Help, Mounter, RexxMast, RinghioServer, Shell (icon only), TypeManager, Media Toolbox (DRAWERS: AmiUpdate, Python) | none (decided) |
+| Internet | Edit Connection, New Connection, Open Connection (icons only; decided 2026-11-16: the DV08 network globe + a blue emblem: plug SdConnections / + EmConnNew / pencil EmConnEdit, selected lit from inside; docs/iconsets/glass/internet_icons.png; APPROVED) (DRAWERS: Action logs, Connection logs, Connections, Reports, Templates) | as listed |
+
+**Decided with the user 2026-11-16:** Prefs editors = their own glass object + the blue gear emblem
+(EmPrefs) lower right; Utilities and System programs = their own glass object, no emblem; selected
+image = a moving part per object (decided one by one, like the drawers and files). First batch: the ten
+most visible programs, then the Prefs editors.
+
+First batch, APPROVED 2026-11-16 (docs/iconsets/glass/programs.png, programs_flip.gif, programs/PR*.png):
+
+| ID | Program | Glass object | Selected |
+|---|---|---|---|
+| PR01 | Shell | a terminal: a glass screen block with a glowing `>_` prompt | the cursor jumps to a new line under a typed command (APPROVED) |
+| PR02 | MultiView | a glass eye (lens + iris) in a ring, lids of black glass (user) | the lids open wide (APPROVED) |
+| PR03 | NotePad | a glass note pad with lines and a pen lying on it | the pen stands at the start of the first line, starting to write (user) (APPROVED) |
+| PR04 | Clock | a glass alarm clock with glowing hands, 10:10:00 | the hands move on to 10:40:30 (APPROVED) |
+| PR05 | Calculator | a glass calculator, key grid and display ("30") | the = key pressed down, the display shows "42" (APPROVED) |
+| PR06 | Find | a magnifying glass lying over a small page | it lifts and tilts towards the viewer (APPROVED) |
+| PR07 | Format | a glass drive with a floppy half inserted | the floppy slides in (KEPT as is, user) |
+| PR08 | Help | a closed glass book with a glowing `?` on its cover | the cover opens 30 degrees, book centred (user) (APPROVED) |
+| PR09 | IconEdit | a glass grid of pixels with a glowing pencil | the pencil moves, one more pixel lit (APPROVED) |
+| PR10 | UnArc | the open glass crate (AR01), lid thrown back | a small crate rises out of it (APPROVED) |
+
+Prefs editors, ALL APPROVED 2026-11-16 (sheets docs/iconsets/glass/prefs1-4.png + _flip.gif, per editor programs/PF*.png); PF18 Presets is a drawer (each its own glass object + the blue gear emblem lower right, so the
+moving part stays clear of the lower right; related editors share a base: printers, monitors, plugs):
+
+| ID | Editor | Glass object | Selected |
+|---|---|---|---|
+| PF01 | AHI | an audio mixer with three faders | one fader slides up (APPROVED) |
+| PF02 | AmigaInput | a joystick with a fire button | the stick tilts 13 degrees to the right (user) (APPROVED) |
+| PF03 | ASL | a requester window with a file list and an OK button | the selection bar moves down a row (APPROVED) |
+| PF04 | Compatibility | two glass puzzle pieces (old and new) | they slide together (APPROVED) |
+| PF05 | Console | a small window with a prompt and a size gadget | LIST typed at the prompt, about to be sent; window size unchanged (user) (APPROVED) |
+| PF06 | DefIcons | a card index with tabbed cards | one card pops up (APPROVED) |
+| PF07 | DOS | a disk platter with a read/write arm, under a clear glass cover (user) | the arm swings over the platter (APPROVED) |
+| PF08 | Font | a letterpress type block with a raised A | the block lifts straight up, no tilt (user) (APPROVED) |
+| PF09 | GUI | a window with a slider and a checkbox | the slider knob slides across (APPROVED) |
+| PF10 | Input | a two-button mouse | the left button clicks down (APPROVED) |
+| PF11 | Internet | a small antenna mast with signal rings | the antenna telescopes up (APPROVED) |
+| PF12 | Locale | a flag on a pole on a small base | the flag rises up the pole (APPROVED) |
+| PF13 | Notifications | a bell on a stand | the bell swings, its clapper out (APPROVED) |
+| PF14 | Palette | a painter's palette with glowing wells, a brush | the brush dips into a well (APPROVED) |
+| PF15 | Picasso96Mode | a graphics card with a fan and a port | a monitor plug slides into the port (APPROVED) |
+| PF16 | Pointer | a 3D mouse pointer arrow over a pad | the arrow presses down, a click ring lights (APPROVED) |
+| PF17 | PopupMenu | a menu panel with items | a submenu pops out to the side (APPROVED) |
+| PF18 | Presets | a DRAWER (user): the glass drawer + the swatch-fan emblem EmPresets, blue (docs/iconsets/glass/presets_drawer.png, PF18B) | the drawer opens (APPROVED) |
+| PF19 | Printer | a printer, a text page in its slot | the page comes out of the top (APPROVED) |
+| PF20 | PrinterGfx | the printer, a picture page; printed only above the print line, the part inside blank (user, applies to PF19-PF21) | the page comes out (APPROVED) |
+| PF21 | PrinterPS | the printer, a page with a vector curve and handles | the page comes out (APPROVED) |
+| PF22 | ScreenBlanker | a monitor with stars and a crescent moon | the moon moves across (APPROVED) |
+| PF23 | ScreenMode | a monitor with a resolution frame inside | the frame grows to the screen's edges (APPROVED) |
+| PF24 | Screens | two screens inside the glass monitor (user), one in front of the other | the front screen is dragged down (the Amiga screen drag), cut off at the bottom of the display; normal shows only that screen (user) (APPROVED) |
+| PF25 | Serial | the Amiga serial port: 25-pin male D-sub on the computer side, the female D-sub on the cable (user) | the plug goes in (APPROVED) |
+| PF26 | Sound | a loudspeaker (stays exactly still, user) | the cone pushes out, a ring of sound (APPROVED) |
+| PF27 | Time | a digital alarm clock (user: time is better a clock), black glass display, 12:00 | another time (07:30) and lit from within (APPROVED) |
+| PF28 | Timezone | a globe with a glowing time band | the band turns (APPROVED) |
+| PF29 | UBoot | a small rocket on a launch pad (boot = launch) | the rocket lifts off (APPROVED) |
+| PF30 | Updates | a tray with a download arrow above it | the arrow drops into the tray (APPROVED) |
+| PF31 | URL | two chain links | the links close together (APPROVED) |
+| PF32 | USB | a USB plug with the trident and its socket (USB-A, authentic) | the plug goes in (APPROVED) |
+| PF33 | WBPattern | a paint roller on a patterned wall | the roller rolls on, more pattern (APPROVED) |
+| PF34 | WBStartup | an illuminated rocker switch (user example: black housing, bezel, side latches, no contacts), I and O | rocked on, lit from within (APPROVED) |
+| PF35 | Workbench | the Amiga desktop (user): a widescreen glass monitor showing the booted OS 4.1 Workbench as on the guest (title bar, drive icons top left, AmiDock right; no Boing ball, user) | windows open on it, spread out (System drawer upper right, Shell lower left, inside the display); monitor still (one framing for both images) (APPROVED) |
+
+Made in batches of about nine, reviewed one by one.
+
+Utilities and System, ALL APPROVED 2026-11-16 (checked against the inventory: all programs; no emblem; sheets docs/iconsets/glass/utils1-3.png + _flip.gif, per program programs/UT*.png, SY*.png):
+
+| ID | Program | Glass object | Selected |
+|---|---|---|---|
+| UT01 | FileCompare | a balance with a page on each pan | the beam tips: they differ (APPROVED) |
+| UT02 | GraphicDump | the printer (PF19), a page showing a screen grab | the page comes out (APPROVED) |
+| UT03 | InitPrinter | the printer, its print head on a rail seen through the glass | the head returns to its start (APPROVED) |
+| UT04 | Installation Utility | a glass software box, flaps closed | the flaps open, a glowing disc inside (APPROVED) |
+| UT05 | KeyShow | a glass keyboard section | a key pressed down and lit (APPROVED) |
+| UT06 | LogViewer | a glass scroll with lines | it unrolls further, more lines (APPROVED) |
+| UT07 | MEmacs | a glass page of text with a glowing text cursor | the cursor moves on a line, the line typed (APPROVED) |
+| UT08 | PartitionWizard | a disk drawn as a glass pie of partitions | one wedge slides out (APPROVED) |
+| UT09 | PlayCD | a round top-loading glass CD player | its lid opens, the disc inside (APPROVED) |
+| UT10 | PrefsObjectsEditor | a glass tree of nodes | a branch opens, its children slide out (APPROVED) |
+| UT11 | PrintFiles | the printer, a file page (the G05 page) in its input tray | the page feeds in (APPROVED) |
+| UT12 | RawDisk | a glass platter lying flat on the floor (user: standing it looked like a fan), an irregular disk layout (staggered sectors, used blocks lit, partitions; user: a regular grid looked like a fan grille) | one sector block lifts straight up out (APPROVED) |
+| UT13 | ShowConfig | a stack of hardware: board, chip, cooler | the stack opens up (an exploded view) (APPROVED) |
+| UT14 | USBInspector | the USB plug (PF32) with a magnifier | the magnifier moves over the trident (APPROVED) |
+| SY01 | BIOSUpdater | a glass flash chip with its pins, an arrow above | the arrow drops into the chip (APPROVED) |
+| SY02 | FixFonts | three type blocks in a row, one askew | the askew one snaps into line (APPROVED) |
+| SY03 | FormatCDRW | a glass drive, a disc on its tray out (Format's family) | the tray slides in (APPROVED) |
+| SY04 | GrimReaper | the Guru Meditation alert (user: another object than the scythe): a black glass panel on a stand, frame and two lines of text | the frame blinks on (lit) (APPROVED) |
+| SY05 | Mounter | a glass drive in front of a drive bay | it slides into the bay (APPROVED) |
+| SY06 | RexxMast | a glass crown on a cushion (the master of ARexx) | the crown lifts, glowing (APPROVED) |
+| SY07 | RinghioServer | the PF35 monitor with the Workbench (user), a notification at the top right | two notifications (APPROVED) |
+| SY08 | TypeManager | a type case with compartments of letter blocks | a letter block lifts out (APPROVED) |
+| SY09 | Media Toolbox | a drive being worked on (user: a device and partition manager): a glass hard drive with its partition map on top, a wrench gripping a partition boundary | the wrench pushes the boundary, the first partition grows (APPROVED) |
+
+This is the biggest group (about 80 own images). Could start with the most visible ones (Shell,
+MultiView, NotePad, Clock, Calculator, Format, Find, the Prefs editors) and leave the rest native.
+
+### 5. Emblems
+
+About 20 glass tiles in deep red, green, blue and violet: music,
+picture, video, text, document, guide, code, font, internet, mail, games, prefs, tools, system,
+storage, devices, startup, download, archive, star, lock, check, warning, home. Final list follows
+groups 1-4.
+
+### 6. Left alone (C)
+
+45 mouse pointers (`def_*pointer`), frames (`def_pictureframe`, `def_previewframe`, `def_textframe`),
+overlays (`icon_leftout`, `icon_noaccess`, `icon_nodrop`), `def_iconify`, `def_window`, the docky icons
+(`def_docky`, `def_extras_dock`, `def_internet_dock`, `def_players_dock`), `def_play`, `def_kingcon`.
+
+## Selected states
+
+Every base gets a lit selected image: the drawer opens, others glow from inside.
+
+## How it is installed
+
+- Default images and emblems go to ENVARC:sys/emblem as now.
+- Install converts the chosen icons to Emblem icons with their tool types (EmblemIcon), after a backup.
+- Remove converts them back and restores the backup, so the user's own icons are never lost.

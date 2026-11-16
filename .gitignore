@@ -5,3 +5,5 @@ spike/*.iconmodule
 spike/*.iconmodule.debug
 spike/iconload
 __pycache__/
+# third-party reference screenshots (stock OS 4.1 icons, the user's PDF picture): kept local
+docs/iconsets/glass/reference/
