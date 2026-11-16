@@ -1,0 +1,38 @@
+.KEY QUIET/S
+.BRA {
+.KET }
+; RemoveSamples: deletes the sample images of the Emblem package from
+; ENVARC:sys/emblem and ENV:sys/emblem: the ones of this version and of
+; every earlier one. Images you added yourself, and the drawers in there
+; (icon sets), are not touched. Emblem itself stays installed.
+;
+;   double-click its icon, or: Execute RemoveSamples [QUIET]
+;
+; QUIET deletes them without asking (the Install script's Remove uses it).
+; The names below are every sample image the package has ever had; keep
+; the list complete when samples are added (tools/make_lha.sh checks it).
+; Public domain.
+
+FailAt 21
+
+If "{QUIET}" EQ ""
+  Echo "This deletes the sample images of Emblem in ENVARC:sys/emblem"
+  Echo "(DrawerNS, DrawerS and the Emblem... emblems of the package)."
+  Echo ""
+  Echo "Images you added yourself and the drawers in there (icon sets)"
+  Echo "stay. Emblem stays installed. Icons that use the samples, like"
+  Echo "the Examples, show their own pictures afterwards."
+  Echo ""
+  Ask "Delete the sample images? (y/n)"
+  If NOT WARN
+    Echo "Nothing was deleted. Close this window."
+    Quit
+  EndIf
+EndIf
+
+Delete >NIL: "ENVARC:sys/emblem/(DrawerNS|DrawerS|DocumentNS|DocumentS|EmblemArchive|EmblemCheck|EmblemCode|EmblemDownload|EmblemGames|EmblemHeart|EmblemInternet|EmblemLock|EmblemMail|EmblemMusic|EmblemPictures|EmblemPrefs|EmblemStar|EmblemText|EmblemTools|EmblemVideo|EmblemWarning).png" QUIET FORCE
+Delete >NIL: "ENV:sys/emblem/(DrawerNS|DrawerS|DocumentNS|DocumentS|EmblemArchive|EmblemCheck|EmblemCode|EmblemDownload|EmblemGames|EmblemHeart|EmblemInternet|EmblemLock|EmblemMail|EmblemMusic|EmblemPictures|EmblemPrefs|EmblemStar|EmblemText|EmblemTools|EmblemVideo|EmblemWarning).png" QUIET FORCE
+
+If "{QUIET}" EQ ""
+  Echo "The sample images are deleted. Close this window."
+EndIf

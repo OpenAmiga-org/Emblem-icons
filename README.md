@@ -9,8 +9,9 @@ Status: all six steps of the plan done. The module loads and saves the Emblem fo
 `IMAGE=` / `IMAGESELECTED=` default images and `EMBLEM=` / `EMBLEMSELECTED=` emblems from
 `ENVARC:sys/emblem/` with the methods NONE, DARK, BRIGHT, GRAY, SHADOW and GLOW; tool types without
 a method use the settings in `ENV:sys/emblem.prefs` (keys in src/emblemprefs.h). The release package
-`dist/Emblem.lha` has sample art (placeholder, drawn by a script), ten example icons, the guide and an
-Install script that installs, updates and removes everything.
+`dist/Emblem.lha` has a small sample set (placeholder art, drawn by a script) for its ten example
+icons, RemoveSamples (deletes just the sample images), the guide and an Install script that installs,
+updates and removes everything.
 
 Public domain ([UNLICENSE](UNLICENSE)), the art too.
 

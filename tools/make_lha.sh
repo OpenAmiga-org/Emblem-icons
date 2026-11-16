@@ -7,11 +7,14 @@
 #   Emblem.info, Emblem.readme
 #   Emblem/                          drawer
 #     Install                        Installation Utility script (install, update, remove)
+#     RemoveSamples                  AmigaDOS script: deletes the sample images (installed
+#                                    with the documentation; Install's Remove runs it too)
 #     Emblem.guide                   documentation
 #     LICENSE.txt, Emblem-format.txt
 #     Libs/IconModules/emblem.iconmodule
 #     C/EmblemIcon
-#     Images/*.png                   sample art (art/, drawn by tools/make_art.py)
+#     Images/*.png                   the sample images: only those the examples use
+#                                    (tools/make_examples.py --images; art/, tools/make_art.py)
 #     Examples/                      Emblem icons (tools/make_examples.py) + ReadMe
 #
 # The LHA and the readme are also copied to $RELEASES (default: the shared
@@ -50,8 +53,15 @@ mkdir -p "$D/C" "$D/Libs/IconModules" "$D/Images" "$ROOT/dist"
 
 cp "$ROOT/build/os4/emblem.iconmodule" "$D/Libs/IconModules/"
 cp "$ROOT/build/os4/EmblemIcon" "$D/C/"
-cp "$ROOT"/art/*.png "$D/Images/"
-cp "$ROOT/package/Emblem/Install" "$D/"
+# the small sample set: the images the examples use. RemoveSamples must know
+# every one of them (its list also keeps the names of earlier versions' samples)
+samples=$("$ROOT/tools/make_examples.py" --images)
+for n in $samples; do
+	cp "$ROOT/art/$n.png" "$D/Images/"
+	grep -q "[(|]$n[|)]" "$ROOT/package/Emblem/RemoveSamples" ||
+		{ echo "package/Emblem/RemoveSamples does not delete the sample $n" >&2; exit 1; }
+done
+cp "$ROOT/package/Emblem/Install" "$ROOT/package/Emblem/RemoveSamples" "$D/"
 sed -e "s/^@\$VER: Emblem.guide [0-9.]* ([0-9.]*)/@\$VER: Emblem.guide $ver ($amigadate)/" \
 	"$ROOT/package/Emblem/Emblem.guide" | iconv -f UTF-8 -t ISO-8859-1 > "$D/Emblem.guide"
 cp "$ROOT/UNLICENSE" "$D/LICENSE.txt"

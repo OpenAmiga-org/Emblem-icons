@@ -301,6 +301,34 @@ Every base gets a lit selected image: the drawer opens, others glow from inside.
 
 ## How it is installed
 
+**Decided by the user 2026-11-16:** the Emblem installer installs ONLY the plugin (emblem.iconmodule,
+EmblemIcon, settings, documentation). The glass icon set gets an installation script of its own: it
+needs the plugin, copies the set's images, converts the system's icons to Emblem icons after a backup,
+and its remove restores the backed-up originals.
+- The plugin keeps only a SMALL sample set (for its examples), with a script to remove the samples so
+  the user can clear the system of them. **Done (2026-11-16, not committed):** the package ships the 11
+  images its examples use (`tools/make_examples.py --images`: DrawerNS/S + 9 emblems; was 21);
+  `package/Emblem/RemoveSamples` (AmigaDOS, IconX icon P13, installed with the documentation) deletes
+  the samples of this and every earlier version from ENVARC:/ENV:sys/emblem and nothing else (asks
+  first; QUIET for Install's Remove, which now runs it); `tools/make_lha.sh` stops if it misses a shipped
+  sample. Guest test: tests/os4/run_os4.py --step=6, 101/101 (2026-11-16); the double-click run (IconX window, y and n) checked by hand.
+- Two archives: the plugin, and the icon set (each updated on its own).
+- REVERT (the user, 2026-11-16: "I will be testing the new icon set in a live system I will want a way
+  to revert the change once it is installed"): before changing anything the icon set installer copies
+  every icon it will change, byte for byte, into a backup drawer with a manifest (original path +
+  checksum), verified before any conversion; the backup drawer carries its own plain AmigaDOS restore
+  script (works without the plugin and without Installer, from a Shell); the Installer remove does the
+  same and removes the set's images and settings; ENVARC:Sys is restored and the ENV:Sys copies cleared;
+  the restore checks every file against the manifest's checksums and names any mismatch; a second install
+  never overwrites the first backup. Tested in the guest (install, restore, compare every file) before the
+  user's live system.
+- Names still to decide (the user will work them out separately): what the new icon type is called
+  (today "Emblem": the module emblem.iconmodule, EMBLEM= tool types) and what the icon set is called
+  (working name "glass").
+
+Earlier notes:
+
+
 - Default images and emblems go to ENVARC:sys/emblem as now.
 - Install converts the chosen icons to Emblem icons with their tool types (EmblemIcon), after a backup.
 - Remove converts them back and restores the backup, so the user's own icons are never lost.

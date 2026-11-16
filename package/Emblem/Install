@@ -1,6 +1,7 @@
 ; Install script for Emblem (AmigaOS 4 Installation Utility).
 ; Installs or removes emblem.iconmodule, EmblemIcon, the sample images,
-; the settings file and the documentation with the examples.
+; the settings file and the documentation with the examples and the
+; RemoveSamples script (which deletes the sample images only).
 ; Public domain.
 
 (set #app "Emblem")
@@ -112,8 +113,8 @@
         (default 0))))
   (if (= #imgs 0)
     (
-      (foreach "Images" "#?.png"
-        (run (cat "C:Delete >NIL: \"" (tackon #imgdir @each-name) "\" QUIET FORCE")))
+      ; RemoveSamples knows the samples of this and of every earlier version
+      (run "C:Execute RemoveSamples QUIET")
       (run (cat "C:Delete >NIL: \"" #imgdir "\" QUIET"))
       (run (cat "C:Delete >NIL: \"ENV:sys/emblem\" QUIET"))
     )
@@ -266,6 +267,13 @@
   (infos)
   (nogauge))
 (copyfiles (source "Examples.info") (dest #docs) (nogauge))
+(copyfiles
+  (prompt "Copying RemoveSamples")
+  (help @copyfiles-help)
+  (source "RemoveSamples")
+  (dest #docs)
+  (infos)
+  (nogauge))
 
 ; --- done -------------------------------------------------------------------
 

@@ -1165,7 +1165,9 @@ async def unpack(g, lha):
 async def step6(g):
     lha = os.path.join(ROOT, "dist", "Emblem.lha")
     art = os.path.join(ROOT, "art")
-    pngs = sorted(f for f in os.listdir(art) if f.endswith(".png"))
+    # the package's sample set: the images the examples use
+    pngs = [n + ".png" for n in subprocess.run([os.path.join(ROOT, "tools", "make_examples.py"), "--images"],
+                                               capture_output=True, text=True, check=True).stdout.split()]
     examples = ["Music", "Pictures", "Internet", "Games", "Downloads", "Private", "Favourites", "Old stuff",
                 "Tools", "ReadMe"]
     print("-- step 6: the package")
@@ -1186,7 +1188,8 @@ async def step6(g):
     ok("install: script ran to the end", "Exiting script" in log, log[-400:])
     for f in ["LIBS:IconModules/emblem.iconmodule", "C:EmblemIcon", "ENVARC:sys/emblem.prefs", "ENV:sys/emblem.prefs",
               f"{DOCS}.info", f"{DOCS}/Emblem.guide", f"{DOCS}/LICENSE.txt", f"{DOCS}/Emblem-format.txt",
-              f"{DOCS}/Examples.info", f"{DOCS}/Examples/ReadMe"] + \
+              f"{DOCS}/Examples.info", f"{DOCS}/Examples/ReadMe", f"{DOCS}/RemoveSamples",
+              f"{DOCS}/RemoveSamples.info"] + \
              [f"ENVARC:sys/emblem/{p}" for p in pngs] + \
              [f"{DOCS}/Examples/{e}.info" for e in examples] + [f"{DOCS}/Examples/{e}" for e in examples[:-1]]:
         rc, out = await g.cmd(f'List "{f}" LFORMAT "%N"', timeout=10)
@@ -1267,8 +1270,29 @@ async def step6(g):
     ok("user icon is an Emblem icon", fmt(mine) == "Emblem", " ".join(mine[:3]))
     ok("no crash with the examples on Workbench", await crashes(g) == 0)
 
-    # --- remove (from the package again: the reset emptied RAM:)
+    # --- RemoveSamples: only the samples (also an earlier version's), in ENVARC: and ENV:
+    E = "ENVARC:sys/emblem"
+    await g.cmd(f"Copy {E}/DrawerNS.png {E}/EmblemHeart.png QUIET\nMakeDir {E}/glass\n"
+                f"Copy {E}/DrawerNS.png {E}/glass/DrawerNS.png QUIET\nMakeDir ENV:sys/emblem\n"
+                f"Copy {E}/EmblemStar.png ENV:sys/emblem/EmblemStar.png QUIET", timeout=20)
+    rc, out = await g.cmd(f"Execute {DOCS}/RemoveSamples QUIET", timeout=30)
+    ok("RemoveSamples QUIET runs", rc == 0, out)
+    rc, out = await g.cmd(f'List {E} ALL FILES LFORMAT "%P%N"', timeout=10)
+    left = sorted(out.split())
+    ok("RemoveSamples: only the user's image and the set's drawer stay",
+       left == [f"{E}/MyOwn.png", f"{E}/glass/DrawerNS.png"], out)
+    # ENV: got ENVARC:'s images at the restart: the user's own one stays there too
+    rc, out = await g.cmd('List ENV:sys/emblem FILES LFORMAT "%N"', timeout=10)
+    ok("RemoveSamples: the ENV: copies of the samples are gone too", out.split() == ["MyOwn.png"], out)
+    rc, out = await g.cmd(f"Execute {DOCS}/RemoveSamples QUIET", timeout=30)
+    ok("RemoveSamples again (nothing left to delete) is fine", rc == 0, out)
+    await g.cmd(f"Delete {E}/glass ENV:sys/emblem ALL QUIET FORCE", timeout=20)
+
+    # --- remove (from the package again: the reset emptied RAM:), with the
+    # samples back and one of an earlier version
     await unpack(g, lha)
+    await g.cmd(f"Copy {PKG}/Emblem/Images/#?.png {E} QUIET\nCopy {E}/DrawerNS.png {E}/EmblemHeart.png QUIET",
+                timeout=20)
     t0 = time.time()
     log = await run_installer(g, "remove")
     print(f"  remove took {time.time() - t0:.0f} s (converting the Emblem icons in SYS:)")

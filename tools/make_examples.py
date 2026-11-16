@@ -1,5 +1,7 @@
 #!/home/claude/build/emblem-venv/bin/python
 """make_examples.py ARTDIR OUTDIR [--sheet SHEET.png]
+   make_examples.py --images      the images the examples take from ENVARC:sys/emblem,
+                                  one name a line: the package's sample set (tools/make_lha.sh)
 
 Builds the package's Examples drawer: empty drawers and one text file, each
 with an Emblem icon (tools/mkemblem, built by `make tools`) that shows one
@@ -50,6 +52,18 @@ EXAMPLES = [
     ("ReadMe", "PROJECT", ("DocumentNS", "DocumentS"), ["EMBLEM=EmblemCheck,26,26,36,36", "EMBLEMSELECTED=EmblemCheck,26,26,36,36"],
      "no IMAGE=: emblem on own picture"),
 ]
+
+
+def images():
+    """the names the examples' tool types take from ENVARC:sys/emblem (INTERNAL is the icon's own)"""
+    names = []
+    for _, _, _, tts, _ in EXAMPLES:
+        for t in tts:
+            key, _, val = t.partition("=")
+            n = val.split(",")[0]
+            if key in ("IMAGE", "IMAGESELECTED", "EMBLEM", "EMBLEMSELECTED") and n != "INTERNAL" and n not in names:
+                names.append(n)
+    return names
 
 
 def position(i):
@@ -103,6 +117,9 @@ def sheet(art, path):
 
 
 def main():
+    if sys.argv[1:] == ["--images"]:
+        print("\n".join(images()))
+        return
     art, out = sys.argv[1:3]
     build(art, out)
     if "--sheet" in sys.argv:

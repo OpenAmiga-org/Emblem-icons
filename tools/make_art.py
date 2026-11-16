@@ -453,6 +453,20 @@ def ic_images():
     return im
 
 
+def ic_remove():
+    """RemoveSamples (a script): a picture with a red delete badge"""
+    c = Canvas(64)
+    page(c, PAPER, GREY_L)
+    im = c.done()
+    im.alpha_composite(em_pictures().resize((30, 30), Image.LANCZOS), (6, 18))
+    b = Canvas(32)
+    b.ellipse((3, 3, 29, 29), RED)
+    b.line((10.5, 10.5, 21.5, 21.5), WHITE, 3.2)
+    b.line((21.5, 10.5, 10.5, 21.5), WHITE, 3.2)
+    im.alpha_composite(b.done(1.3).resize((28, 28), Image.LANCZOS), (34, 34))
+    return im
+
+
 # icon types (workbench/workbench.h)
 WBDRAWER, WBTOOL, WBPROJECT = 2, 3, 4
 
@@ -472,6 +486,8 @@ ICONS = {
     "Libs/IconModules": (ic_drawer, WBDRAWER, None, (), None, (140, 110, 300, 150)),
     "Libs/IconModules/emblem.iconmodule": (ic_module, WBPROJECT, None, (), None, None),
     "Images": (ic_images, WBDRAWER, None, (), None, (120, 90, 560, 300)),
+    "RemoveSamples": (ic_remove, WBPROJECT, "C:IconX",
+                      ("WINDOW=CON:80/60/560/240/Emblem samples/AUTO/CLOSE/WAIT",), 16384, None),
 }
 
 

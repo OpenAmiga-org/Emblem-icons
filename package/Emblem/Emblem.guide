@@ -42,14 +42,20 @@ Double-click @{i}Install@{ui}. It copies
   EmblemIcon          to C:
   the sample images   to ENVARC:sys/emblem
   the settings        to ENVARC:sys/emblem.prefs (and ENV:sys)
-  this guide and the  to a drawer "Emblem" in SYS:Documentation
-  examples               (or where you choose)
+  this guide, the     to a drawer "Emblem" in SYS:Documentation
+  examples and           (or where you choose)
+  RemoveSamples
 
 Then @{b}restart the computer@{ub}: icon.library loads icon modules only when
 it starts.
 
 Running Install again updates an installed copy; it can also remove
 Emblem (see @{"Removing Emblem" link REMOVE}).
+
+The sample images are a small set: the ones the examples use. When you
+use images of your own (or an icon set), double-click @{i}RemoveSamples@{ui} in
+the documentation drawer: it deletes the sample images and nothing else
+(see @{"Images and emblems" link IMAGES}).
 
 By hand: copy the files to the places above and restart.
 @ENDNODE
@@ -194,15 +200,21 @@ Changed or new images are noticed within two seconds and show on the next
 icon that is loaded. Emblem keeps up to 64 images (8 MB) in memory.
 
 The sample set is placeholder art, drawn by a script; it is meant to be
-replaced. Images:
+replaced. It has the images the examples use:
 
   DrawerNS, DrawerS         a drawer, closed and open (64x64)
-  DocumentNS, DocumentS     a page, normal and selected (64x64)
 
-Emblems (32x32): EmblemMusic, EmblemPictures, EmblemVideo,
-EmblemInternet, EmblemMail, EmblemPrefs, EmblemTools, EmblemGames,
-EmblemText, EmblemCode, EmblemDownload, EmblemArchive, EmblemStar,
-EmblemHeart, EmblemLock, EmblemCheck, EmblemWarning.
+Emblems (32x32): EmblemMusic, EmblemPictures, EmblemInternet,
+EmblemGames, EmblemDownload, EmblemLock, EmblemStar, EmblemArchive,
+EmblemCheck.
+
+@{b}RemoveSamples@{ub} (in the documentation drawer; double-click it, or
+"Execute RemoveSamples") deletes the sample images from ENVARC:sys/emblem
+and ENV:sys/emblem, also those of earlier versions (DocumentNS,
+DocumentS, EmblemVideo, EmblemMail, EmblemPrefs, EmblemTools, EmblemText,
+EmblemCode, EmblemHeart, EmblemWarning). It asks first. Images you added
+and the drawers in there stay, and so does Emblem. Icons that used a
+sample show their own pictures after that.
 
 Good emblems have a dark rim, so they read on any image and background.
 @ENDNODE
@@ -309,7 +321,9 @@ Double-click Install and choose @{i}Remove it@{ui}. It
    volumes you choose (all drawers below them too), with
    "EmblemIcon ... ALL TO=AMIGA",
  - deletes the documentation drawer with the examples,
- - deletes the sample images (yours too, or none, if you choose so),
+ - deletes the sample images (yours too, or none, if you choose so;
+   to delete only the samples and keep Emblem, use RemoveSamples, see
+   @{"Images and emblems" link IMAGES}),
  - deletes the settings, EmblemIcon and emblem.iconmodule.
 
 The module stays active until the computer restarts.

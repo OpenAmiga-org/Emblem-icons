@@ -47,9 +47,10 @@ Features:
 - Icons need the module's own file format; the EmblemIcon command
   converts icons to it and back, one by one, by pattern, or whole drawer
   trees.
-- Sample art (placeholder, public domain), ten example icons, an
-  AmigaGuide manual, and an Install script that installs, updates and
-  removes everything (removing turns Emblem icons back into normal ones).
+- A small sample set (placeholder art, public domain) for the ten
+  example icons, RemoveSamples to delete just those images, an AmigaGuide
+  manual, and an Install script that installs, updates and removes
+  everything (removing turns Emblem icons back into normal ones).
 
 After installing, restart the computer: icon.library loads icon modules
 only when it starts.
