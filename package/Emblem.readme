@@ -48,7 +48,7 @@ Features:
 - Icons need the module's own file format; the EmblemIcon command
   converts icons to it and back and sets their settings, one by one, by
   pattern, or whole drawer trees.
-- A small sample set (placeholder art, public domain) for the ten
+- A small sample set (AmigaOS 4.1 icon style, public domain) for the ten
   example icons, RemoveSamples to delete just those images, an AmigaGuide
   manual, and an Install script that installs, updates and removes
   everything (removing turns Emblem icons back into normal ones).
@@ -64,5 +64,6 @@ History:
 - 1.1 (not released yet): the settings are kept in the icon file, no
   longer in the tool types (most Prefs editors refused to start with
   them); module 1.1, EmblemIcon 1.2 (SET, UNSET, TYPE); small sample
-  set and RemoveSamples.
+  set and RemoveSamples; new AmigaOS 4.1 style pictures for the
+  package's icons and the sample set.
 - 1.0 (15.11.2026): first release.

@@ -388,7 +388,7 @@ releases/) with the readme `dist/Emblem.readme` (OS4Depot format, not submitted)
 
 | Piece | What |
 |---|---|
-| `art/` | sample art, drawn by `tools/make_art.py` (public domain, placeholder): DrawerNS/DrawerS, DocumentNS/DocumentS (64x64), 17 emblems (32x32). Sheet: docs/step6_art.png (A01-A21, package icons P01-P13). The package ships only the 11 the examples use (`tools/make_examples.py --images`; DrawerNS/S + 9 emblems) |
+| `art/` | sample art (since 2026-11-17 in the OS 4.1 icon style, made in ~/os4icons; read by `tools/make_art.py`, which still draws the 8 unshipped emblems): DrawerNS/DrawerS, DocumentNS/DocumentS (64x64), 17 emblems (32x32); `art/package/` the package icons' pictures. Sheet: docs/step6_art.png (A01-A21, package icons P01-P13). The package ships only the 11 the examples use (`tools/make_examples.py --images`; DrawerNS/S + 9 emblems) |
 | `package/Emblem/RemoveSamples` | AmigaDOS script (IconX icon P13): deletes the sample images of this and every earlier version from ENVARC:/ENV:sys/emblem, nothing else; asks first, QUIET for Install's Remove. Installed with the documentation; `tools/make_lha.sh` checks it names every shipped sample |
 | Examples | ten Emblem icons written on the host (`tools/mkemblem.c`, `tools/make_examples.py`), one feature each; renders docs/step6_examples.png (X01-X10, with the installer's default EMBLEMMETHOD=SHADOW) |
 | `package/Emblem/Install` | Installation Utility script: install, update (asks before replacing sample images, keeps the settings and the user's images) and remove |
@@ -424,7 +424,7 @@ Learned:
 
 The art (A01-A21, P01-P12) and the examples (X01-X10) were **approved by the user 2026-11-15**.
 
-Not done: the art is placeholder art; the readme is not submitted to OS4Depot (only on the user's go).
+Not done: the readme is not submitted to OS4Depot (only on the user's go).
 
 
 ## 15. The settings in the icon file (1.1, 2026-11-16)

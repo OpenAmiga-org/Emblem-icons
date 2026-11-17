@@ -11,7 +11,7 @@ Status: all six steps of the plan done. The module loads and saves the Emblem fo
 a method use the global ones in `ENV:sys/emblem.prefs` (keys in src/emblemprefs.h). Since 1.1 these
 four settings are kept in the icon file (the `ESET` chunk), not in the tool types: most OS 4 Prefs
 editors read all of their tool types as arguments and refused to start with them. The release package
-`dist/emblem_icons.lha` has a small sample set (placeholder art, drawn by a script) for its ten example
+`dist/emblem_icons.lha` has a small sample set (AmigaOS 4.1 icon style) for its ten example
 icons, RemoveSamples (deletes just the sample images), the guide and an Install script that installs,
 updates and removes everything.
 
@@ -32,9 +32,9 @@ Download: the package is on the [releases page](https://github.com/orgin/emblemi
 | `src/imagecache.[ch]` | decoded default images and emblems by name, and the settings (module only) |
 | `src/emblem.h` | public: format name, image folder, the `EMBLEMA_NoCompose`, `EMBLEMA_GetSettings` and `EMBLEMA_SetSettings` tags |
 | `src/emblemicon.c` | EmblemIcon: convert icons to/from the Emblem format (patterns, ALL), show them, set/remove settings and tool types (SET, UNSET, TYPE) |
-| `art/` | the sample art set of the package (drawn by `tools/make_art.py`) |
+| `art/` | the sample art set of the package; `art/package/` the pictures of the package's own icons |
 | `package/` | Install script, guide, readme, examples ReadMe, the package's native icons |
-| `tools/make_art.py` | draws the art set, the example's own picture and the package icons' pictures |
+| `tools/make_art.py` | reads the art set and the package icons' pictures (made in the OS 4.1 style elsewhere), draws the extra emblems, writes the `.argb` files for mkicon |
 | `tools/mkemblem.c` | host tool: writes Emblem icons (`make tools`) |
 | `tools/make_examples.py` | the package's example icons (and a render sheet of them) |
 | `tools/make_lha.sh` | puts the release together: `dist/emblem_icons.lha` + `dist/emblem_icons.readme` (`OUT=` and `RELEASES=/nonexistent` for test builds; the readme goes next to `OUT`) |
@@ -64,7 +64,7 @@ tests/os4/run_os4.py --step=2   # only one step's guest tests (repeat --step= fo
 tests/os4/run_os4.py --step=5 --only=mem,speed   # some step 5 sections
 tools/make_lha.sh               # dist/emblem_icons.lha (needs make os4 tools; checks the History entries)
 tests/os4/run_os4.py --step=6   # the package: install, update, examples, remove (alone; resets the guest)
-tools/make_art.py art --preview docs/step6_art.png   # redraw the art (then rebuild the package)
+tools/make_art.py art --preview docs/step6_art.png   # the art sheet + the icons' .argb files (then mkicon, rebuild the package)
 ```
 
 ## Use (guest)

@@ -9,11 +9,12 @@ PNG icons, so they cannot be written on the host. "_" in a name stands for
 The example icons in the package's Examples drawer are Emblem icons; they
 are written on the host by `tools/make_examples.py` (build/host/mkemblem).
 
-The pictures are drawn by `tools/make_art.py` (public domain, like the rest
-of the project). To change an icon:
+The pictures are `art/package/NAME.png` (normal) and `NAME.sel.png`
+(selected), made in the AmigaOS 4.1 icon style (2026-11-17); the selected
+ones are used as they are. To change an icon:
 
-1. `tools/make_art.py art` writes `art/icons/*.argb` and
-   `art/icons/mkicons.script` (and the art set itself).
+1. Replace its pictures in `art/package/`, then `tools/make_art.py art`
+   writes `art/icons/*.argb` and `art/icons/mkicons.script`.
 2. `make os4` builds `build/os4/mkicon` (tools/os4/mkicon.c).
 3. Copy mkicon, the `.argb` files and the script to a drawer in the OS4
    guest and run `Execute mkicons.script` there; the icons appear in `out/`.

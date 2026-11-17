@@ -1,5 +1,5 @@
 @DATABASE Emblem.guide
-@$VER: Emblem.guide 1.1 (16.11.2026)
+@$VER: Emblem.guide 1.1 (17.11.2026)
 @AUTHOR Björn Hagström
 @WORDWRAP
 @NODE MAIN "Emblem"
@@ -200,10 +200,10 @@ colour with alpha is best, palette and gray ones are fine too).
 Changed or new images are noticed within two seconds and show on the next
 icon that is loaded. Emblem keeps up to 64 images (8 MB) in memory.
 
-The sample set is placeholder art, drawn by a script; it is meant to be
-replaced. It has the images the examples use:
+The sample set is drawn in the AmigaOS 4.1 icon style; replace it with
+your own images whenever you like. It has the images the examples use:
 
-  DrawerNS, DrawerS         a drawer, closed and open (64x64)
+  DrawerNS, DrawerS         a drawer, normal and selected (64x64)
 
 Emblems (32x32): EmblemMusic, EmblemPictures, EmblemInternet,
 EmblemGames, EmblemDownload, EmblemLock, EmblemStar, EmblemArchive,
@@ -378,6 +378,8 @@ remove it (Remove does that when you let it).
  - EmblemIcon 1.2: SET, UNSET and TYPE (settings and tool types, whole
    drawer trees); shows the settings.
  - A small sample set and RemoveSamples.
+ - New pictures in the AmigaOS 4.1 icon style for the package's icons
+   and the sample set.
 
 @{b}1.0 (15.11.2026)@{ub}
  - First release: emblem.iconmodule 1.0 and EmblemIcon 1.0, sample art,
@@ -391,6 +393,5 @@ Emblem by Björn Hagström (orgin), from openamiga.org project 34 "Emblem
 icon plugin" (2008). Written anew in 2026.
 
 Public domain (see LICENSE.txt): use, change and share it as you like.
-The sample images and icons are drawn by a script and are public domain
-too.
+The sample images and icons are public domain too.
 @ENDNODE
