@@ -1,5 +1,7 @@
 /*
- * emblemspec.h - the emblem tool types (docs/plan.md section 1), portable C.
+ * emblemspec.h - the Emblem settings (docs/plan.md section 1), portable C.
+ * They are kept in the icon file (ESET chunk, docs/format.md), not in the
+ * tool types:
  *
  *   IMAGE=Name[,Method]
  *   IMAGESELECTED=Name[,Method]
@@ -43,7 +45,7 @@ typedef struct ESpec
 	ESEmblem emblem[2];        /* [0] EMBLEM, [1] EMBLEMSELECTED */
 } ESpec;
 
-/* Parse a packed tool type block (NUL-terminated strings one after the other).
+/* Parse a packed settings block (NUL-terminated strings one after the other).
  * Returns the number of directives found (0 = nothing to do). */
 int es_parse(const char *tt, uint32_t len, ESpec *spec);
 

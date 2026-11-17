@@ -73,7 +73,7 @@ STRIP = ppc-amigaos-strip --strip-all -R .comment
 MODFLAGS = -O2 -Wall -Wno-unused-parameter -fno-builtin -nostdlib -nostartfiles
 TOOLFLAGS = -O2 -Wall -Wno-pointer-sign -D__USE_INLINE__
 
-os4-in-docker: $(OS4)/emblem.iconmodule $(OS4)/EmblemIcon $(OS4)/icontest $(OS4)/memeater $(OS4)/mkicon
+os4-in-docker: $(OS4)/emblem.iconmodule $(OS4)/EmblemIcon $(OS4)/EmblemInfo $(OS4)/icontest $(OS4)/memeater $(OS4)/mkicon
 
 MODSRC = src/module.c src/emblemfile.c src/emblemspec.c src/compose.c src/imagecache.c src/png.c src/emblemprefs.c
 
@@ -83,6 +83,11 @@ $(OS4)/emblem.iconmodule: $(MODSRC) src/*.h
 
 $(OS4)/EmblemIcon: src/emblemicon.c src/EmblemIcon_rev.h src/emblem.h
 	$(CC) $(TOOLFLAGS) -o $@.debug src/emblemicon.c -lauto
+	$(STRIP) -o $@ $@.debug
+
+# EmblemInfo: the settings editor (ReAction)
+$(OS4)/EmblemInfo: src/embleminfo.c src/EmblemInfo_rev.h src/emblem.h src/emblemspec.c src/emblemspec.h
+	$(CC) $(TOOLFLAGS) -o $@.debug src/embleminfo.c src/emblemspec.c -lauto
 	$(STRIP) -o $@ $@.debug
 
 $(OS4)/icontest: tests/os4/icontest.c src/emblem.h src/compose.c src/compose.h

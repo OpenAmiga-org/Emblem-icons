@@ -184,6 +184,13 @@ int ef_parse(const uint8_t *buf, uint32_t len, EFIcon *ic)
 			ic->tooltypes = (const char *)d;
 			ic->tooltypeslen = clen;
 		}
+		else if (idis(ch, "ESET"))
+		{
+			if (ic->settings) return EF_ERR_CORRUPT;
+			if (clen && d[clen - 1] != 0) return EF_ERR_CORRUPT;
+			ic->settings = (const char *)d;
+			ic->settingslen = clen;
+		}
 		else if (idis(ch, "IMAG"))
 		{
 			EFImage img, *slot;
@@ -220,6 +227,20 @@ int ef_parse(const uint8_t *buf, uint32_t len, EFIcon *ic)
 	return EF_OK;
 }
 
+int ef_parse_imag(const uint8_t *chunk, uint32_t len, EFImage *img, uint8_t *state)
+{
+	uint32_t clen;
+	int r;
+	if (len < 9 || !idis(chunk, "IMAG")) return EF_ERR_CORRUPT;
+	clen = g32(chunk + 4);
+	if (clen > len - 8 || chunk[8] > 1) return EF_ERR_CORRUPT;
+	if ((r = parse_image(chunk + 8, clen, img)) != EF_OK) return r;
+	img->chunk = chunk;
+	img->chunklen = len;
+	*state = chunk[8];
+	return EF_OK;
+}
+
 int ef_image_unpack(const EFImage *img, uint8_t *dst, ef_uncompress_fn fn, void *ctx)
 {
 	if (!img->present) return EF_ERR_CORRUPT;
@@ -250,6 +271,7 @@ uint32_t ef_write_bound(const EFIcon *ic)
 	if (ic->deftool) n += chunklen(ic->deftoollen);
 	if (ic->toolwindow) n += chunklen(ic->toolwindowlen);
 	if (ic->tooltypes) n += chunklen(ic->tooltypeslen);
+	if (ic->settings) n += chunklen(ic->settingslen);
 	for (i = 0; i < 2; i++)
 	{
 		if (ic->img[i].present)
@@ -340,6 +362,8 @@ int ef_write(const EFIcon *ic, uint8_t *dst, uint32_t dstmax, uint32_t *outlen,
 	if (dstmax < 12) return EF_ERR_SPACE;
 	if (ic->tooltypes && ic->tooltypeslen && ic->tooltypes[ic->tooltypeslen - 1] != 0)
 		return EF_ERR_CORRUPT;
+	if (ic->settings && ic->settingslen && ic->settings[ic->settingslen - 1] != 0)
+		return EF_ERR_CORRUPT;
 	copybytes(dst, (const uint8_t *)"FORM", 4);
 	copybytes(dst + 8, (const uint8_t *)"EMBL", 4);
 
@@ -373,6 +397,8 @@ int ef_write(const EFIcon *ic, uint8_t *dst, uint32_t dstmax, uint32_t *outlen,
 	if (ic->toolwindow && (r = put_chunk(dst, dstmax, &pos, "TWIN", ic->toolwindow, ic->toolwindowlen)) != EF_OK)
 		return r;
 	if (ic->tooltypes && (r = put_chunk(dst, dstmax, &pos, "TTYP", ic->tooltypes, ic->tooltypeslen)) != EF_OK)
+		return r;
+	if (ic->settings && (r = put_chunk(dst, dstmax, &pos, "ESET", ic->settings, ic->settingslen)) != EF_OK)
 		return r;
 	if (ic->img[1].present && !ic->img[0].present) return EF_ERR_CORRUPT;
 	if (ic->planar[1].present && !ic->planar[0].present) return EF_ERR_CORRUPT;

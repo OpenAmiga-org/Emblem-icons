@@ -2,9 +2,12 @@
  * emblem.iconmodule - icon.library loader/saver module for Emblem icons.
  *
  * Loads and saves the Emblem file format (docs/format.md). On load, the
- * IMAGE=, IMAGESELECTED=, EMBLEM= and EMBLEMSELECTED= tool types compose
- * the displayed images from default images and emblems in EMBLEM_IMAGEDIR
- * (src/compose.c); saving always writes the icon's own images.
+ * icon's settings (IMAGE=, IMAGESELECTED=, EMBLEM=, EMBLEMSELECTED=; the
+ * file's ESET chunk, not its tool types) compose the displayed images from
+ * default images and emblems in EMBLEM_IMAGEDIR (src/compose.c); saving
+ * always writes the icon's own images and keeps the settings.
+ * EMBLEMA_GetSettings and EMBLEMA_SetSettings (src/emblem.h) read and change
+ * them.
  *
  * API: SDK workbench/iconmodule.h and AutoDocs/iconmodule.doc. The module
  * must not open icon.library itself; icon.library passes its interface
@@ -93,8 +96,10 @@ struct EmblemData
 	uint32          crc1, crc2;
 	uint32          planarlen;        /* planar IMAG chunks of a chunky or composed icon */
 	uint32          chunkylen;        /* chunky IMAG chunks of a composed icon */
+	uint32          chunky0len;       /* ... of them the normal image's chunk (0 = none) */
 	uint32          unknownlen;       /* unknown chunks */
-	uint8           data[];           /* planar, chunky, unknown chunks, as in the file */
+	uint32          settingslen;      /* the settings (ESET), packed strings */
+	uint8           data[];           /* planar, chunky, unknown chunks as in the file, settings */
 };
 
 /* What compose() did */
@@ -624,8 +629,25 @@ static BOOL set_planar(struct EmblemBase *eb, struct DiskObject *icon, struct Fr
 	return TRUE;
 }
 
+/* The settings in md as a NULL-terminated array on fl (pointing into md); NULL if none. */
+static STRPTR *settings_array(struct FreeList *fl, struct EmblemData *md)
+{
+	char *s = (char *)md->data + md->planarlen + md->chunkylen + md->unknownlen;
+	uint32 n = ef_count_tooltypes(s, md->settingslen), i, k = 0;
+	STRPTR *a;
+	if (!n || !(a = IIcon->FreeAlloc(fl, (n + 1) * sizeof(STRPTR), MEMF_SHARED | MEMF_CLEAR)))
+		return NULL;
+	for (i = 0; i < md->settingslen && k < n; )
+	{
+		a[k++] = s + i;
+		while (i < md->settingslen && s[i]) i++;
+		i++;
+	}
+	return a;
+}
+
 static int32 fill_icon(struct EmblemBase *eb, struct DiskObject *icon, struct FreeList *fl, const EFIcon *ef,
-	BOOL nocompose)
+	BOOL nocompose, STRPTR **getsettings)
 {
 	struct EmblemData *md;
 	struct Gadget *g = &icon->do_Gadget;
@@ -707,7 +729,7 @@ static int32 fill_icon(struct EmblemBase *eb, struct DiskObject *icon, struct Fr
 		icon->do_DrawerData = dd;
 	}
 
-	if (!nocompose && ef->tooltypes && es_parse(ef->tooltypes, ef->tooltypeslen, &spec))
+	if (!nocompose && ef->settings && es_parse(ef->settings, ef->settingslen, &spec))
 		sp = &spec;
 	{
 	PROF_START(ts);
@@ -736,7 +758,8 @@ static int32 fill_icon(struct EmblemBase *eb, struct DiskObject *icon, struct Fr
 	for (i = 0; i < ef->nunknown; i++)
 		if (unknownlen + ef->unknown[i].len <= eb->maxunknown)
 			unknownlen += ef->unknown[i].len;
-	if (!(md = IIcon->FreeAlloc(fl, sizeof(*md) + planarlen + chunkylen + unknownlen, MEMF_SHARED | MEMF_CLEAR)))
+	if (!(md = IIcon->FreeAlloc(fl, sizeof(*md) + planarlen + chunkylen + unknownlen + ef->settingslen,
+		MEMF_SHARED | MEMF_CLEAR)))
 		return ERROR_NO_FREE_STORE;
 	md->owner    = &eb->lib;
 	md->gwidth   = ef->gwidth;
@@ -763,6 +786,7 @@ static int32 fill_icon(struct EmblemBase *eb, struct DiskObject *icon, struct Fr
 		{
 			IExec->CopyMem((APTR)ef->img[i].chunk, md->data + md->planarlen + chunkylen, ef->img[i].chunklen);
 			chunkylen += ef->img[i].chunklen;
+			if (i == 0) md->chunky0len = ef->img[0].chunklen;
 		}
 	for (i = 0, unknownlen = 0; i < ef->nunknown; i++)
 		if (unknownlen + ef->unknown[i].len <= eb->maxunknown)
@@ -772,7 +796,13 @@ static int32 fill_icon(struct EmblemBase *eb, struct DiskObject *icon, struct Fr
 			unknownlen += ef->unknown[i].len;
 		}
 	md->unknownlen = unknownlen;
+	if (ef->settings && ef->settingslen)
+	{
+		IExec->CopyMem((APTR)ef->settings, md->data + md->planarlen + md->chunkylen + unknownlen, ef->settingslen);
+		md->settingslen = ef->settingslen;
+	}
 	IIcon->IconControl(icon, ICONCTRLA_SetIconModuleData, md, TAG_DONE);
+	if (getsettings) *getsettings = md->settingslen ? settings_array(fl, md) : NULL;
 	PROF_ADD(9, tm);
 	return 0;
 }
@@ -782,7 +812,32 @@ static int32 fill_icon(struct EmblemBase *eb, struct DiskObject *icon, struct Fr
 struct SaveBuf
 {
 	char  *tooltypes;     /* packed tool types (AllocVec) */
+	char  *settings;      /* packed settings from EMBLEMA_SetSettings (AllocVec) */
+	uint8 *own;           /* an own image of the file, unpacked (AllocVec) */
 };
+
+/* Pack a NULL-terminated string array (empty strings left out) into *buf
+ * (AllocVec); *len = 0 and no buffer if there is nothing. FALSE: no memory. */
+static BOOL pack_strings(STRPTR *a, char **buf, uint32_t *len)
+{
+	uint32 n = 0, pos = 0, i;
+	*buf = NULL;
+	*len = 0;
+	for (i = 0; a && a[i]; i++)
+		if (a[i][0]) n += IUtility->Strlen(a[i]) + 1;
+	if (!n) return TRUE;
+	if (!(*buf = IExec->AllocVecTags(n, AVT_Type, MEMF_PRIVATE, TAG_DONE)))
+		return FALSE;
+	for (i = 0; a[i]; i++)
+		if (a[i][0])
+		{
+			uint32 l = IUtility->Strlen(a[i]) + 1;
+			IExec->CopyMem(a[i], *buf + pos, l);
+			pos += l;
+		}
+	*len = pos;
+	return TRUE;
+}
 
 static void get_planar(const struct Image *im, EFImage *img)
 {
@@ -802,7 +857,55 @@ static void get_planar(const struct Image *im, EFImage *img)
 	if (!img->datalen) img->present = 0;
 }
 
-static int32 icon_to_ef(struct EmblemBase *eb, struct DiskObject *icon, EFIcon *ef, struct SaveBuf *sb)
+/* A program changed one of the two composed images (pasted a new picture, deleted the
+ * selected one) and left the other: that one is still the composed picture, so the file's
+ * own image goes in its place. keep = the unchanged one (0 normal, 1 selected); ef->img[]
+ * hold the program's images. FALSE if they can't be put together (the own image isn't a
+ * chunky one, or kind or size differ): the caller then takes both images as they are. */
+static BOOL keep_own(struct EmblemBase *eb, struct EmblemData *md, EFIcon *ef, struct SaveBuf *sb, int keep)
+{
+	const uint8 *chunks = md->data + md->planarlen;
+	uint32 off = keep ? md->chunky0len : 0;
+	uint32 len = keep ? md->chunkylen - md->chunky0len : md->chunky0len;
+	EFImage own, *other = &ef->img[1 - keep];
+	uint8_t state;
+
+	if (!len)
+	{
+		/* no own image in that place: only a missing own selected image is fine */
+		if (!keep || !ef->img[0].present) return FALSE;
+		ef->img[1].present = 0;
+	}
+	else
+	{
+		if (ef_parse_imag(chunks + off, len, &own, &state) != EF_OK || state != keep || own.kind == EF_PLANAR)
+			return FALSE;
+		if (other->present && (other->kind != own.kind || other->width != own.width || other->height != own.height))
+			return FALSE;
+		if (keep == 1 && !other->present) return FALSE;
+		if (own.comp != EF_RAW)
+		{
+			if (!(sb->own = IExec->AllocVecTags(own.datalen, AVT_Type, MEMF_PRIVATE, TAG_DONE)))
+				return FALSE;
+			if (ef_image_unpack(&own, sb->own, z_uncompress, get_z(eb)) != EF_OK) return FALSE;
+			own.data = sb->own;
+			own.comp = EF_RAW;
+		}
+		ef->img[keep] = own;
+	}
+	/* no planar images: the module makes a fallback when it loads the icon */
+	ef->planar[0].present = ef->planar[1].present = 0;
+	ef->gwidth  = ef->img[0].width;
+	ef->gheight = ef->img[0].height;
+	ef->gflags  = (ef->gflags & ~GFLG_GADGHIGHBITS) | (ef->img[1].present ? GFLG_GADGHIMAGE : GFLG_GADGHCOMP);
+	return TRUE;
+}
+
+/* setsettings: the EMBLEMA_SetSettings tag, or NULL to keep the icon's own settings;
+ * dropplanar: ICONPUTA_DropPlanarIconImage (the Information window's "Drop planar data"):
+ * an icon with chunky images is saved without its planar fallback (made again at load) */
+static int32 icon_to_ef(struct EmblemBase *eb, struct DiskObject *icon, EFIcon *ef, struct SaveBuf *sb,
+	struct TagItem *setsettings, BOOL dropplanar)
 {
 	struct EmblemData *md;
 	uint32 fmt = IDFMT_BITMAPPED, frameless = 0, i, w = 0, h = 0;
@@ -821,7 +924,9 @@ static int32 icon_to_ef(struct EmblemBase *eb, struct DiskObject *icon, EFIcon *
 
 	IIcon->IconControl(icon, ICONCTRLA_GetFrameless, &frameless, ICONCTRLA_GetAspectRatio, &aspect, TAG_DONE);
 	ef->frameless = frameless ? 1 : 0;
-	ef->aspect    = aspect;
+	/* PACK_ICON_ASPECT_RATIO(num, den): a 0 in either half is no ratio (the Information
+	 * window's Restore leaves 0x40 on an icon), so it is stored as unknown */
+	ef->aspect    = (aspect >> 4) && (aspect & 15) ? aspect : ICON_ASPECT_RATIO_UNKNOWN;
 
 	if (icon->do_DefaultTool)
 	{
@@ -907,16 +1012,19 @@ static int32 icon_to_ef(struct EmblemBase *eb, struct DiskObject *icon, EFIcon *
 	{
 		/* Still the composed picture? Then write the icon's own images from the file.
 		 * Otherwise a program gave the icon new images: they become its own (the
-		 * planar fallback is made at load time). */
-		if (fmt == IDFMT_DIRECTMAPPED && w == md->cw && h == md->ch && d1
-			&& fingerprint(d1, w * h * 4) == md->crc1
-			&& (!md->has2 || (d2 && fingerprint(d2, w * h * 4) == md->crc2)))
+		 * planar fallback is made at load time); when it changed only one of them,
+		 * the other stays the file's own (keep_own()). */
+		BOOL size = fmt == IDFMT_DIRECTMAPPED && w == md->cw && h == md->ch;
+		BOOL same1 = size && d1 && fingerprint(d1, w * h * 4) == md->crc1;
+		BOOL same2 = md->has2 ? size && d2 && real2 && fingerprint(d2, w * h * 4) == md->crc2
+		                      : !ef->img[1].present;
+		if (same1 && same2)
 		{
 			ef->img[0].present = ef->img[1].present = 0;
 			ef->gwidth  = md->gwidth;
 			ef->gheight = md->gheight;
 			ef->gflags  = md->gflags;
-			if (md->planarlen)
+			if (md->planarlen && !(dropplanar && md->chunky))
 			{
 				ef->unknown[ef->nunknown].data = md->data;
 				ef->unknown[ef->nunknown].len  = md->planarlen;
@@ -929,7 +1037,7 @@ static int32 icon_to_ef(struct EmblemBase *eb, struct DiskObject *icon, EFIcon *
 				ef->nunknown++;
 			}
 		}
-		else
+		else if (!(same1 || same2) || !keep_own(eb, md, ef, sb, same1 ? 0 : 1))
 		{
 			ef->gwidth  = w;
 			ef->gheight = h;
@@ -941,14 +1049,14 @@ static int32 icon_to_ef(struct EmblemBase *eb, struct DiskObject *icon, EFIcon *
 		 * make one at load time) and gadget size, not what layout left in GadgetRender */
 		ef->gwidth  = md->gwidth;
 		ef->gheight = md->gheight;
-		if (md->planarlen)
+		if (md->planarlen && !dropplanar)
 		{
 			ef->unknown[ef->nunknown].data = md->data;
 			ef->unknown[ef->nunknown].len  = md->planarlen;
 			ef->nunknown++;
 		}
 	}
-	else if (icon->do_Gadget.Flags & GFLG_GADGIMAGE)
+	else if ((icon->do_Gadget.Flags & GFLG_GADGIMAGE) && !(dropplanar && ef->img[0].present))
 	{
 		/* planar images: the only ones of old icons, the fallback of chunky ones */
 		get_planar(icon->do_Gadget.GadgetRender, &ef->planar[0]);
@@ -965,6 +1073,18 @@ static int32 icon_to_ef(struct EmblemBase *eb, struct DiskObject *icon, EFIcon *
 		ef->unknown[ef->nunknown].data = md->data + md->planarlen + md->chunkylen;
 		ef->unknown[ef->nunknown].len  = md->unknownlen;
 		ef->nunknown++;
+	}
+
+	if (setsettings)
+	{
+		if (!pack_strings((STRPTR *)setsettings->ti_Data, &sb->settings, &ef->settingslen))
+			return ERROR_NO_FREE_STORE;
+		ef->settings = sb->settings;
+	}
+	else if (md && md->settingslen)
+	{
+		ef->settings    = (const char *)md->data + md->planarlen + md->chunkylen + md->unknownlen;
+		ef->settingslen = md->settingslen;
 	}
 	return 0;
 }
@@ -1106,7 +1226,8 @@ static struct DiskObject * APICALL m_LoadIconA(struct IconModuleIFace *Self, CON
 	{
 		struct TagItem *origtags = (struct TagItem *)IUtility->GetTagData(IMA_TagList, 0, tags);
 		err = fill_icon(eb, icon, fl, &ef,
-			origtags && IUtility->GetTagData(EMBLEMA_NoCompose, FALSE, origtags));
+			origtags && IUtility->GetTagData(EMBLEMA_NoCompose, FALSE, origtags),
+			origtags ? (STRPTR **)IUtility->GetTagData(EMBLEMA_GetSettings, 0, origtags) : NULL);
 	}
 	PROF_ADD(2, tf);
 	IExec->FreeVec(buf);
@@ -1145,7 +1266,7 @@ static uint32 APICALL m_SaveIconA(struct IconModuleIFace *Self, CONST_STRPTR nam
 	struct EmblemBase *eb = (struct EmblemBase *)Self->Data.LibBase;
 	CONST_STRPTR fmt = (CONST_STRPTR)IUtility->GetTagData(IMA_SaveFormat, 0, tags);
 	struct TagItem *origtags = (struct TagItem *)IUtility->GetTagData(IMA_TagList, 0, tags);
-	struct SaveBuf sb = { NULL };
+	struct SaveBuf sb = { NULL, NULL, NULL };
 	uint8 *buf = NULL;
 	uint32_t bound, len = 0;
 	int32 err = 0;
@@ -1169,7 +1290,9 @@ static uint32 APICALL m_SaveIconA(struct IconModuleIFace *Self, CONST_STRPTR nam
 		return TRUE;
 	}
 
-	if (!(err = icon_to_ef(eb, icon, &ef, &sb)))
+	if (!(err = icon_to_ef(eb, icon, &ef, &sb,
+		origtags ? IUtility->FindTagItem(EMBLEMA_SetSettings, origtags) : NULL,
+		origtags && IUtility->GetTagData(ICONPUTA_DropPlanarIconImage, FALSE, origtags))))
 	{
 		bound = ef_write_bound(&ef);
 		if (!(buf = IExec->AllocVecTags(bound, AVT_Type, MEMF_PRIVATE, TAG_DONE)))
@@ -1196,6 +1319,8 @@ static uint32 APICALL m_SaveIconA(struct IconModuleIFace *Self, CONST_STRPTR nam
 	}
 	if (buf) IExec->FreeVec(buf);
 	if (sb.tooltypes) IExec->FreeVec(sb.tooltypes);
+	if (sb.settings) IExec->FreeVec(sb.settings);
+	if (sb.own) IExec->FreeVec(sb.own);
 	set_error(tags, err);
 	return err ? FALSE : TRUE;
 }
@@ -1267,7 +1392,7 @@ static APTR APICALL m_DupIconDataA(struct IconModuleIFace *Self, struct DiskObje
 		set_error(tags, icon ? ERROR_OBJECT_WRONG_TYPE : 0);
 		return NULL;
 	}
-	size = sizeof(*md) + md->planarlen + md->chunkylen + md->unknownlen;
+	size = sizeof(*md) + md->planarlen + md->chunkylen + md->unknownlen + md->settingslen;
 	if (!fl || !(copy = IIcon->FreeAlloc(fl, size, MEMF_SHARED)))
 	{
 		set_error(tags, ERROR_NO_FREE_STORE);

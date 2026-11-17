@@ -45,7 +45,8 @@
 
 (procedure P_REMOVE
   ; Emblem icons can't be read without the module: turn them back into
-  ; normal icons first. The pictures of their own stay; tool types too.
+  ; normal icons first. The pictures of their own stay; tool types too (the
+  ; Emblem settings can't stay in a normal icon).
   (if (exists #tool)
     (
       (set #convert
@@ -213,7 +214,7 @@
   (
     (set #m
       (askchoice
-        (prompt "Which effect should emblems get when their tool type names none?\n"
+        (prompt "Which effect should emblems get when their setting names none?\n"
                 "(You can change it later in " #prefs ".)")
         (help @askchoice-help)
         (choices "A soft shadow (SHADOW)" "A glow (GLOW)" "None (NONE)")
@@ -226,7 +227,7 @@
       (append "; Emblem settings, read by emblem.iconmodule (see Emblem.guide).\n")
       (append "; KEY=value lines; lines starting with ; or # are comments.\n")
       (append ";\n")
-      (append "; METHOD=NONE|SHADOW|GLOW|GRAY|DARK|BRIGHT  for tool types without a method\n")
+      (append "; METHOD=NONE|SHADOW|GLOW|GRAY|DARK|BRIGHT  for settings without a method\n")
       (append "; IMAGEMETHOD=...   only for IMAGE= and IMAGESELECTED= (wins over METHOD)\n")
       (append "; EMBLEMMETHOD=...  only for EMBLEM= and EMBLEMSELECTED= (wins over METHOD)\n")
       (append "; SHADOWOFFSET=5,5  SHADOWBLUR=2  SHADOWOPACITY=50\n")

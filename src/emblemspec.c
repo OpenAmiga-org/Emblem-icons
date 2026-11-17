@@ -1,5 +1,5 @@
 /*
- * emblemspec.c - parse the emblem tool types (see emblemspec.h).
+ * emblemspec.c - parse the Emblem settings (see emblemspec.h).
  */
 #include "emblemspec.h"
 

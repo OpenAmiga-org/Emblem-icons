@@ -2,8 +2,10 @@ Emblem examples
 ===============
 
 Every icon in this drawer is an Emblem icon: a default image from
-ENVARC:sys/emblem with an emblem on it. Select one and choose
-Icons > Information... to see the tool types that make it.
+ENVARC:sys/emblem with an emblem on it. The settings that make each one
+are kept in its icon file; to see them, type in a Shell in this drawer:
+
+  EmblemIcon #?
 
   Music       an emblem without a method: the settings decide
   Pictures    SHADOW
@@ -16,5 +18,5 @@ Icons > Information... to see the tool types that make it.
   Tools       INTERNAL: the icon's own picture (a wrench) as the emblem
   ReadMe      this file: no IMAGE=, the emblem goes on its own picture
 
-The drawers are empty. Copy them, or their tool types, as you like.
+The drawers are empty. Copy them, or their settings, as you like.
 Emblem.guide (one drawer up) explains everything.

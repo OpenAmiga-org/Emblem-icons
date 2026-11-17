@@ -2,13 +2,13 @@
 """run_iconset.py: the icon set's installer in the OS4 guest, the whole cycle, driven from the host
 through MCPd (helpers from run_os4.py).
 
-Needs dist/GlassIcons.lha (tools/iconset_build.py package) and a plugin archive with EmblemIcon 1.1
-or newer:  OUT=build/test/Emblem.lha RELEASES=/nonexistent tools/make_lha.sh
+Needs dist/emblem_icons_glenz.lha (tools/iconset_build.py package) and a plugin archive with EmblemIcon
+1.2 or newer:  OUT=$PWD/build/test/emblem_icons.lha RELEASES=/nonexistent tools/make_lha.sh
 (--plugin=PATH for another one). If the module isn't running, the plugin is installed first.
 
   1. before: MD5, size, date, protection and comment of every file the set changes
   2. install: the backup (one exact copy per existing file, MD5 lists), Restore, the marker,
-     the images, the settings; every mapped icon is an Emblem icon with its tool types; after a
+     the images, the settings; every mapped icon is an Emblem icon with its settings; after a
      restart a few icons are composed by the module exactly like the host renders them;
      Workbench screenshots of SYS: and SYS:Prefs
   3. install again (update): the backup is the same, nothing added twice
@@ -20,6 +20,7 @@ Public domain.
 """
 import asyncio
 import os
+import re
 import subprocess
 import sys
 import time
@@ -28,10 +29,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import run_os4 as T  # noqa: E402
 
 ROOT = T.ROOT
-NAME, SET, B = "GlassIcons", "glass", "SYS:GlassIconsBackup"
-SETLHA = os.path.join(ROOT, "dist", NAME + ".lha")
+NAME, SET, B = "Glenz", "glenz", "SYS:GlenzBackup"     # as in tools/iconset_build.py
+SETLHA = os.path.join(ROOT, "dist", "emblem_icons_glenz.lha")
 PLUGIN = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--plugin=")),
-              os.path.join(ROOT, "build", "test", "Emblem.lha"))
+              os.path.join(ROOT, "build", "test", "emblem_icons.lha"))
 SETPKG = "RAM:setpkg"
 MAPPING = os.path.join(ROOT, "build", "iconset", SET, "mapping.txt")
 ok = T.ok
@@ -40,6 +41,22 @@ ok = T.ok
 def changed_files():
     m = [l.split("|", 1)[0] for l in open(MAPPING).read().splitlines() if l.strip()]
     return m + ["ENVARC:sys/emblem.prefs"]
+
+
+SETTING_KEYS = ("IMAGE", "IMAGESELECTED", "EMBLEM", "EMBLEMSELECTED")
+
+
+def shown_lists(out):
+    """(tool types, settings) from EmblemIcon's listing of one icon"""
+    lists, cur = {"Tool types:": [], "Settings:": []}, None
+    for l in out.splitlines():
+        if l.strip() in lists:
+            cur = lists[l.strip()]
+        elif cur is not None and l.startswith("    "):
+            cur.append(l.strip())
+        else:
+            cur = None
+    return lists["Tool types:"], lists["Settings:"]
 
 
 def env_copy(p):
@@ -149,7 +166,7 @@ async def compose_check(g, icons):
                 await g.down(f"{T.G}/set_{key}_{i}.argb", lf)
                 args += [f"--own{i}", lf]
         rc, rawt = await g.dump(f'"{n}"')
-        want = subprocess.run(args + [l[3:] for l in rawt if l.startswith("tt=")], capture_output=True,
+        want = subprocess.run(args + [l[3:] for l in rawt if l.startswith("es=")], capture_output=True,
                               text=True).stdout.split()
         want = dict(w.split("=", 1) for w in want if "=" in w)
         rc, comp = await g.dump(f'"{n}"', raw=False)
@@ -176,15 +193,19 @@ async def main():
     # a clean start: no backup, no images; the plugin running
     await g.cmd(f'Delete "{B}" "{B}.info" "{B}.old" "{B}.old.info" ENVARC:sys/emblem/{SET} ENV:sys/emblem/{SET} '
                 "ALL QUIET FORCE", timeout=60)
-    rc, out = await g.cmd("Version emblem.iconmodule", timeout=10)
-    if rc != 0:
-        print("  installing the plugin first:", PLUGIN)
+    # the built module and EmblemIcon (src/*_rev.h) must be the ones in the guest
+    vers = [re.search(r'#define VERS\s+"([^"]+)"', open(os.path.join(ROOT, "src", f)).read()).group(1)
+            for f in ("emblem.iconmodule_rev.h", "EmblemIcon_rev.h")]
+    rc, out = await g.cmd("Version emblem.iconmodule\nVersion C:EmblemIcon", timeout=10)
+    if rc != 0 or not all(v + " " in out for v in vers):
+        print("  installing the plugin first:", PLUGIN, "| guest has:", " ".join(out.split()))
         await T.unpack(g, PLUGIN)
         log = await T.run_installer(g, "install")
         ok("plugin installed", "Exiting script" in log, log[-300:])
         g = await T.reset(g)
     rc, out = await g.cmd("Version emblem.iconmodule\nVersion C:EmblemIcon", timeout=10)
-    ok("plugin running, EmblemIcon 1.1+", rc == 0 and "EmblemIcon 1." in out and "EmblemIcon 1.0 " not in out, out)
+    ok("plugin running, EmblemIcon 1.2+", rc == 0 and "EmblemIcon 1." in out
+       and "EmblemIcon 1.0 " not in out and "EmblemIcon 1.1 " not in out, out)
     n0, _ = await emblem_count(g, "SYS: ALL")
     before = await state(g, files, "before")
     envfiles = [env_copy(p) for p in files if env_copy(p)]
@@ -228,8 +249,10 @@ async def main():
     ok(f"install: every mapped icon is an Emblem icon ({n1} in SYS: incl. ENVARC:Sys)", n1 - n0 == mapped,
        f"{n1} - {n0} vs {mapped}; {out[-200:]}")
     rc, out = await g.cmd('C:EmblemIcon "SYS:Prefs/Printer.info"', timeout=20)
-    ok("install: tool types of SYS:Prefs/Printer", f"IMAGE={SET}/p_printer" in out and "EmPrefs,0,0,36,35,SHADOW" in out,
-       out)
+    tts, ess = shown_lists(out)
+    ok("install: settings of SYS:Prefs/Printer", f"IMAGE={SET}/p_printer" in ess
+       and any("EmPrefs,0,0,36,35,SHADOW" in s for s in ess), out)
+    ok("install: ... none of them in its tool types", not [t for t in tts if t.split("=")[0].upper() in SETTING_KEYS], out)
     after_inst = await state(g, files, "afterinst")
     env_after = await state(g, envfiles, "envafter")
     sysdefs = [p for p in exist if p.startswith("ENVARC:Sys/")]

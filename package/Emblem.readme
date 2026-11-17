@@ -25,7 +25,8 @@ file managers and every other program that shows icons show the result.
 Change one image in ENVARC:sys/emblem and every icon that uses it
 changes with it. No patches.
 
-Four tool types do it:
+Four settings do it, kept in the icon file (not in its tool types, so
+programs that read their tool types as arguments never see them):
 
   IMAGE=DrawerNS
   IMAGESELECTED=DrawerS
@@ -35,9 +36,9 @@ Four tool types do it:
 Features:
 
 - Default images and emblems as PNG files (any PNG; true colour with
-  alpha is best), scaled to the size the tool type asks for.
+  alpha is best), scaled to the size the setting asks for.
 - Effects per layer: SHADOW, GLOW, GRAY, DARK, BRIGHT, NONE; a settings
-  file chooses the effect for tool types without one, and the shadow and
+  file chooses the effect for settings without one, and the shadow and
   glow look (offset, softness, opacity, colour).
 - INTERNAL: an icon's own picture as the emblem (a program's picture on
   a drawer image).
@@ -45,8 +46,8 @@ Features:
   composed picture, and converting back gives the original icon.
 - New or changed images show on the next icon load, without a restart.
 - Icons need the module's own file format; the EmblemIcon command
-  converts icons to it and back, one by one, by pattern, or whole drawer
-  trees.
+  converts icons to it and back and sets their settings, one by one, by
+  pattern, or whole drawer trees.
 - A small sample set (placeholder art, public domain) for the ten
   example icons, RemoveSamples to delete just those images, an AmigaGuide
   manual, and an Install script that installs, updates and removes
@@ -60,4 +61,8 @@ anew.
 
 History:
 
+- 1.1 (not released yet): the settings are kept in the icon file, no
+  longer in the tool types (most Prefs editors refused to start with
+  them); module 1.1, EmblemIcon 1.2 (SET, UNSET, TYPE); small sample
+  set and RemoveSamples.
 - 1.0 (15.11.2026): first release.

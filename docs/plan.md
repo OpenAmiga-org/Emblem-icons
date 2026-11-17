@@ -426,3 +426,71 @@ The art (A01-A21, P01-P12) and the examples (X01-X10) were **approved by the use
 
 Not done: the art is placeholder art; the readme is not submitted to OS4Depot (only on the user's go).
 
+
+## 15. The settings in the icon file (1.1, 2026-11-16)
+
+Found in the live test of the glass icon set: some Prefs editors (WBPattern and others) refused to start
+once their icons were Emblem icons; after Restore they worked again. Cause: they read all of their icon's
+tool types as `ReadArgs()` arguments, so `IMAGE=`, `EMBLEM=` ... are unknown arguments. Of SYS:Prefs, 18
+failed (ASL, Compatibility, Console, DOS, GUI, Palette, Pointer, PopupMenu, Printer, PrinterPS,
+ScreenMode, Screens, Serial, Sound, Time, Timezone, WBPattern, Workbench). Bracketed tool types would be
+skipped by them, but the user chose to move the data into the icon file, with an editor (EmblemIcon now,
+a GUI later); existing Emblem icons are not converted (nothing public used the tool types yet).
+
+- **Format:** new chunk `ESET` (docs/format.md): the settings as packed NUL-terminated `KEY=value`
+  strings, like TTYP. Module 1.0 keeps it as an unknown chunk.
+- **Module 1.1:** composes from ESET only (an `IMAGE=` tool type does nothing now); keeps the settings
+  with the icon (EmblemData), so every save (Information window, snapshot, layout, DupDiskObject) keeps
+  them. `EMBLEMA_GetSettings` (GetIconTags, STRPTR **: NULL-terminated array on the icon's FreeList) and
+  `EMBLEMA_SetSettings` (PutIconTags, STRPTR *: replaces them in the file) in src/emblem.h.
+- **EmblemIcon 1.2:** SET/UNSET with the four keys change the settings, other keys the tool types; a
+  setting implies TO=EMBLEM (TO=AMIGA with one is an error: native icons can't keep them); the listing
+  shows "Tool types:" and "Settings:" apart; every saved setting is checked after loading the icon again.
+- **mkemblem** `ES=` (TT= refuses the four keys), the examples and the icon set (Scripts/Convert with
+  EmblemIcon SET) write settings; the set's Install needs module 1.1 and EmblemIcon 1.2.
+- **Tests:** host format test (ESET round trip, unterminated, twice); guest: `icontest tt` routes the four
+  keys to the settings (`ttonly` keeps them as tool types), dumps show `es=` lines, the host render takes
+  the settings.
+
+Results (QEMU guest, 2026-11-16): host tests OK; `run_os4.py` steps 1-5 all pass (1+3+5: 364/364 after
+the test fixes below, 2 and 4 passed in the first run), step 6 with the test build
+(`--plugin=build/test/Emblem.lha`) 101/101 (one expectation fixed first: after Remove the user's icon is
+native, so its settings are gone); `run_iconset.py` 64/64 (the settings of SYS:Prefs/Printer are in the
+file, none in its tool types; 7 icons composed exactly like the host); new **`run_prefs.py`**: with the set
+installed, **all 33 Prefs editors the set changes start from Workbench** with their own window (WBPattern:
+"WBPattern preferences" 546x434 instead of the requester), 37/37.
+
+Learned: the test icons of step 1 already carry NEWTT=1 when the SET test starts (use other keys); an
+installed package leaves ENV:sys/emblem.prefs with EMBLEMMETHOD=SHADOW, which the expected pixels of steps
+2, 3 and 5 don't assume, so run_os4.py deletes it first; a Prefs editor that runs already opens no second
+window.
+
+## 16. Workbench's Information window and Emblem icons (2026-11-17)
+
+The user asked to test that the Information window (RAWBInfo; its menu can replace the icon's image)
+and Emblem icons don't break each other. Tried by hand on Emblem icons (a tool, a project, a drawer),
+then automated: **`tests/os4/run_wbinfo.py` 21/21**. The settings were kept in every case but one
+(Load default icon replaces the whole icon with the normal default icon, as the window warns).
+
+Found and fixed in the module:
+- **Delete alternate image** and **Paste** (which replaces only the normal image) baked the composed
+  picture into the icon's own image: when a program changes one of the two composed images, the
+  other one is now the file's own again (`keep_own()`; `ef_parse_imag()` reads one IMAG chunk).
+- **Drop planar data** did nothing: the module now honours `ICONPUTA_DropPlanarIconImage` (no planar
+  fallback in the file; made again at load).
+- **Default + Restore** left the aspect byte 0x40 (4:0, no ratio): an aspect with a 0 half is now
+  saved as unknown.
+
+Works as it is: save without a change (nothing written), tool types and stack, Frameless, Default (the
+own image becomes the default tool's, the settings stay, so the composed picture is the same), Load (a
+PNG), a drawer's Show/View, type change, Save as default "tool" (def_tool becomes the Emblem icon).
+Note for the guide: after Default/Paste/Load the window shows the new own picture, but the saved icon
+still shows the composed one (IMAGE= covers it).
+
+**EmblemInfo** (docs/embleminfo.md, src/embleminfo.c): the user chose a separate editor for the new
+icon type instead of a copy of the Information window. First version 1.0 runs in the guest
+(docs/embleminfo_v1.png): preview by the module, image/emblem names with file requesters (relative to
+ENVARC:sys/emblem, files elsewhere copied there on request), the icon's own picture as the emblem,
+size, position, effects, "same emblem when selected", Normal/Emblem format (asked before settings are
+dropped). Checked by hand: edit + Save writes only the settings; normal → Emblem → normal gives back
+the original icon exactly.

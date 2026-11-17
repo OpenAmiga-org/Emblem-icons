@@ -23,6 +23,7 @@ MKEMBLEM = os.path.join(ROOT, "build", "host", "mkemblem")
 WINDOW = "100,70,560,300"
 DEFAULT_PREFS = "EMBLEMMETHOD=SHADOW\n"
 
+SETTING_KEYS = ("IMAGE", "IMAGESELECTED", "EMBLEM", "EMBLEMSELECTED")
 D = ["IMAGE=DrawerNS", "IMAGESELECTED=DrawerS"]
 
 
@@ -32,7 +33,7 @@ def em(name, method=""):
     return [f"EMBLEM={a}", f"EMBLEMSELECTED={a}"]
 
 
-# name, type, own images (art names; None = DrawerNS/DrawerS), tool types, what it shows
+# name, type, own images (art names; None = DrawerNS/DrawerS), settings, what it shows
 EXAMPLES = [
     ("Music", "DRAWER", None, D + em("EmblemMusic"),
      "no method: the settings decide"),
@@ -55,13 +56,13 @@ EXAMPLES = [
 
 
 def images():
-    """the names the examples' tool types take from ENVARC:sys/emblem (INTERNAL is the icon's own)"""
+    """the names the examples' settings take from ENVARC:sys/emblem (INTERNAL is the icon's own)"""
     names = []
     for _, _, _, tts, _ in EXAMPLES:
         for t in tts:
             key, _, val = t.partition("=")
             n = val.split(",")[0]
-            if key in ("IMAGE", "IMAGESELECTED", "EMBLEM", "EMBLEMSELECTED") and n != "INTERNAL" and n not in names:
+            if key in SETTING_KEYS and n != "INTERNAL" and n not in names:
                 names.append(n)
     return names
 
@@ -85,7 +86,8 @@ def build(art, out):
             args.append("WINDOW=" + WINDOW)
         else:
             args += ["TOOL=SYS:Utilities/MultiView", "STACK=32768"]
-        args += ["TT=" + t for t in tts]
+        # the Emblem keys are the icon's settings (ES=), anything else a tool type
+        args += [("ES=" if t.partition("=")[0] in SETTING_KEYS else "TT=") + t for t in tts]
         subprocess.run(args, check=True)
     print(f"{len(EXAMPLES)} example icons -> {out}")
 

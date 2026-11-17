@@ -3,7 +3,10 @@
  *
  *   icontest dump NAME          canonical dump of everything icon.library returns
  *   icontest make KIND NAME     write a native test icon: argb, argb1, clut, clut1, planar, drawer
- *   icontest tt NAME STRING     add a tool type and save (what the Information window does)
+ *   icontest tt NAME STRING     add a tool type and save (what the Information window does);
+ *                               IMAGE=, IMAGESELECTED=, EMBLEM=, EMBLEMSELECTED= are added to
+ *                               the Emblem settings instead (EMBLEMA_SetSettings)
+ *   icontest ttonly NAME STRING the same, always as a tool type (how Emblem 1.0 kept the settings)
  *   icontest pos NAME X Y       snapshot: ICONPUTA_OnlyUpdatePosition
  *   icontest dup NAME NEW       DupDiskObject() and save under a new name
  *   icontest layoutsave NAME N  load on the Workbench screen, lay out, set stack N, save
@@ -11,7 +14,8 @@
  *   icontest bench NAME N       load and free the icon N times, print the time
  *   icontest pixels NAME PREFIX write the chunky images as PREFIX_1.argb / PREFIX_2.argb
  *                               (palette and planar images converted like the module does)
- *   icontest ttfile NAME FILE   replace the tool types with the lines of FILE and save
+ *   icontest ttfile NAME FILE   replace the tool types (and the settings, sorted out like tt)
+ *                               with the lines of FILE and save
  *   icontest loadall DIR [N]    load + lay out (Workbench screen) every icon in DIR, N rounds, timed
  *   icontest leak NAME N        free memory before/after N loads (after a warm-up)
  *   icontest screen DEPTH SECS [SAVE] NAME...
@@ -19,7 +23,8 @@
  *                               selected), keep it SECS seconds, with SAVE write the icons back
  *   icontest raw CMD ...        the same, with EMBLEMA_NoCompose (the icon's own images)
  *
- * NAME without ".info". Output lines are "key=value" so the host can diff dumps.
+ * NAME without ".info". Output lines are "key=value" so the host can diff dumps;
+ * dump prints the tool types as tt= lines, the Emblem settings as es= lines.
  */
 #include <proto/exec.h>
 #include <proto/dos.h>
@@ -48,10 +53,23 @@ static uint32 crc32(const uint8 *p, uint32 n)
 }
 
 static BOOL raw = FALSE;   /* load with EMBLEMA_NoCompose: the icon's own images */
+static STRPTR *settings;   /* EMBLEMA_GetSettings of the last load() */
+
+/* the keys kept in the Emblem file instead of the tool types */
+static BOOL is_setting(CONST_STRPTR s)
+{
+	static const char *const keys[] = { "IMAGE", "IMAGESELECTED", "EMBLEM", "EMBLEMSELECTED" };
+	const char *e = strchr(s, '=');
+	size_t n = e ? (size_t)(e - s) : strlen(s);
+	for (int i = 0; i < 4; i++)
+		if (n == strlen(keys[i]) && Strnicmp(s, keys[i], n) == 0) return TRUE;
+	return FALSE;
+}
 
 static struct DiskObject *load(CONST_STRPTR name, STRPTR *fmt)
 {
 	int32 err = 0;
+	settings = NULL;
 	struct DiskObject *d = GetIconTags(name,
 		ICONGETA_FailIfUnavailable, TRUE,
 		ICONGETA_RemapIcon,         FALSE,
@@ -59,6 +77,7 @@ static struct DiskObject *load(CONST_STRPTR name, STRPTR *fmt)
 		ICONGETA_FileFormat,        fmt,
 		ICONA_ErrorCode,            &err,
 		EMBLEMA_NoCompose,          raw,
+		EMBLEMA_GetSettings,        &settings,
 		TAG_DONE);
 	if (!d) Printf("error=load %ld\n", err);
 	return d;
@@ -81,6 +100,7 @@ static int dump(CONST_STRPTR name)
 	Printf("type=%ld\n", d->do_Type);
 	Printf("deftool=%s\n", d->do_DefaultTool ? d->do_DefaultTool : (STRPTR)"(none)");
 	for (STRPTR *tt = d->do_ToolTypes; tt && *tt; tt++) Printf("tt=%s\n", *tt);
+	for (STRPTR *es = settings; es && *es; es++) Printf("es=%s\n", *es);
 	Printf("pos=%ld,%ld\n", d->do_CurrentX, d->do_CurrentY);
 	Printf("stack=%ld\n", d->do_StackSize);
 	Printf("toolwindow=%s\n", d->do_ToolWindow ? d->do_ToolWindow : (STRPTR)"(none)");
@@ -240,13 +260,17 @@ static int make(CONST_STRPTR kind, CONST_STRPTR name)
 	return ok ? 0 : 10;
 }
 
-static int put(CONST_STRPTR name, struct DiskObject *d, BOOL onlypos)
+/* es: the settings to save (EMBLEMA_SetSettings), NULL = keep the icon's own */
+static int put_es(CONST_STRPTR name, struct DiskObject *d, BOOL onlypos, STRPTR *es)
 {
 	int32 err = 0;
-	BOOL ok = PutIconTags(name, d, ICONPUTA_OnlyUpdatePosition, onlypos, ICONA_ErrorCode, &err, TAG_DONE);
+	BOOL ok = PutIconTags(name, d, ICONPUTA_OnlyUpdatePosition, onlypos, ICONA_ErrorCode, &err,
+		es ? EMBLEMA_SetSettings : TAG_IGNORE, (uint32)es, TAG_DONE);
 	Printf(ok ? "saved=1\n" : "error=put %ld\n", err);
 	return ok ? 0 : 10;
 }
+
+static int put(CONST_STRPTR name, struct DiskObject *d, BOOL onlypos) { return put_es(name, d, onlypos, NULL); }
 
 int main(int argc, char **argv)
 {
@@ -264,7 +288,8 @@ int main(int argc, char **argv)
 		BPTR fh;
 		int32 len, n = 0, rc;
 		char *buf;
-		STRPTR *tt, *old;
+		STRPTR *tt, *es, *old;
+		int32 nes = 0;
 		if (!d) return 10;
 		if (!(fh = Open(argv[3], MODE_OLDFILE))) { Printf("error=open\n"); return 10; }
 		buf = AllocVecTags(1024 * 1024 + 1, AVT_ClearWithValue, 0, TAG_DONE);
@@ -273,21 +298,24 @@ int main(int argc, char **argv)
 		if (len < 0) len = 0;
 		for (int32 i = 0; i < len; i++) if (buf[i] == '\n') n++;
 		tt = AllocVecTags((n + 2) * sizeof(STRPTR), AVT_ClearWithValue, 0, TAG_DONE);
+		es = AllocVecTags((n + 2) * sizeof(STRPTR), AVT_ClearWithValue, 0, TAG_DONE);
 		n = 0;
 		for (char *p = buf; p < buf + len; )
 		{
 			char *e = p;
 			while (e < buf + len && *e != '\n') e++;
 			*e = 0;
-			tt[n++] = p;
+			if (is_setting(p)) es[nes++] = p;
+			else tt[n++] = p;
 			p = e + 1;
 		}
 		old = d->do_ToolTypes;
 		d->do_ToolTypes = tt;
-		rc = put(argv[2], d, FALSE);
+		rc = put_es(argv[2], d, FALSE, es);
 		d->do_ToolTypes = old;
-		Printf("tooltypes=%ld\n", n);
+		Printf("tooltypes=%ld\nsettings=%ld\n", n, nes);
 		FreeVec(tt);
+		FreeVec(es);
 		FreeVec(buf);
 		FreeDiskObject(d);
 		return rc;
@@ -465,20 +493,27 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	if (argc >= 4 && !strcmp(argv[1], "make")) return make(argv[2], argv[3]);
-	if (argc >= 4 && !strcmp(argv[1], "tt"))
+	if (argc >= 4 && (!strcmp(argv[1], "tt") || !strcmp(argv[1], "ttonly")))
 	{
 		STRPTR fmt = NULL;
 		struct DiskObject *d = load(argv[2], &fmt);
 		if (!d) return 10;
-		int n = 0;
-		for (STRPTR *tt = d->do_ToolTypes; tt && *tt; tt++) n++;
+		BOOL es = !strcmp(argv[1], "tt") && is_setting(argv[3]);
+		STRPTR *list = es ? settings : d->do_ToolTypes;
+		int n = 0, rc;
+		for (STRPTR *tt = list; tt && *tt; tt++) n++;
 		STRPTR *nt = AllocVecTags((n + 2) * sizeof(STRPTR), AVT_ClearWithValue, 0, TAG_DONE);
-		for (int i = 0; i < n; i++) nt[i] = d->do_ToolTypes[i];
+		for (int i = 0; i < n; i++) nt[i] = list[i];
 		nt[n] = argv[3];
-		STRPTR *old = d->do_ToolTypes;
-		d->do_ToolTypes = nt;
-		int rc = put(argv[2], d, FALSE);
-		d->do_ToolTypes = old;
+		if (es)
+			rc = put_es(argv[2], d, FALSE, nt);
+		else
+		{
+			STRPTR *old = d->do_ToolTypes;
+			d->do_ToolTypes = nt;
+			rc = put(argv[2], d, FALSE);
+			d->do_ToolTypes = old;
+		}
 		FreeVec(nt);
 		FreeDiskObject(d);
 		return rc;

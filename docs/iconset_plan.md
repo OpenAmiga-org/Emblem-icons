@@ -323,19 +323,20 @@ and its remove restores the backed-up originals.
   never overwrites the first backup. Tested in the guest (install, restore, compare every file) before the
   user's live system.
 - Names still to decide (the user will work them out separately): what the new icon type is called
-  (today "Emblem": the module emblem.iconmodule, EMBLEM= tool types) and what the icon set is called
+  (today "Emblem": the module emblem.iconmodule, EMBLEM= settings) and what the icon set is called
   (working name "glass").
 
 ### The icon set's installer (design, 2026-11-16)
 
-Working names, each in one place in `tools/iconset_build.py`: images `ENVARC:sys/emblem/glass/`, package
-drawer and archive `GlassIcons` (`dist/GlassIcons.lha`), backup drawer `SYS:GlassIconsBackup`.
+Names (decided 2026-11-17, see "Names" below; until then working names `glass`, `GlassIcons`,
+`SYS:GlassIconsBackup`), each in one place in `tools/iconset_build.py`: images `ENVARC:sys/emblem/glenz/`,
+package drawer `Glenz`, archive `dist/emblem_icons_glenz.lha`, backup drawer `SYS:GlenzBackup`.
 
 - **Needs:** emblem.iconmodule running (installed + restarted: EmblemIcon can only write Emblem icons
   then), C:EmblemIcon 1.1 or newer (SET), C:MD5Sum (part of OS 4.1 FE: `MD5Sum ... >>list`,
   `MD5Sum CHECK=list STATUS` gives 5 on any changed or missing file). Missing → stops, changes nothing.
 - **Backup first** (`Scripts/Backup`, generated from the mapping): every mapped icon that exists is copied
-  with `Copy CLONE` into `SYS:GlassIconsBackup/files/<root>/<path>` (root SYS or ENVARC; ENVARC:Sys def_
+  with `Copy CLONE` into `SYS:GlenzBackup/files/<root>/<path>` (root SYS or ENVARC; ENVARC:Sys def_
   icons and ENVARC:sys/emblem.prefs), and its MD5 goes into `<root>.md5` with the name relative to the
   root, so one list checks the originals (CD SYS:) and the copies (CD files/SYS). An icon already in the
   backup is never copied again: an update keeps the first backup and only adds icons new to the set.
@@ -343,21 +344,21 @@ drawer and archive `GlassIcons` (`dist/GlassIcons.lha`), backup drawer `SYS:Glas
   saved in this run against the same list. Any difference → stop, nothing changed.
 - **Then:** the marker `Installed` and the `Restore` script (+ icon) go into the backup drawer; the images
   are copied; the emblem shadow the set was drawn with (SHADOWOFFSET=2,2, SHADOWBLUR=2, SHADOWOPACITY=55)
-  is added to ENVARC:/ENV:sys/emblem.prefs (saved first; asked, default yes); the emblem tool types say
+  is added to ENVARC:/ENV:sys/emblem.prefs (saved first; asked, default yes); the emblem settings say
   SHADOW, so the set looks as approved whatever EMBLEMMETHOD says; `Scripts/Convert` (generated) turns
   every BACKED-UP icon into an Emblem icon with `EmblemIcon ... TO=EMBLEM SET="..."` and copies the
   changed def_ icons to ENV:Sys. Failures are listed; the backup and Restore are already in place.
-- **Restore** (`SYS:GlassIconsBackup/Restore`, plain AmigaDOS: no plugin, no Installer; double-click it
-  (IconX, asks first) or `Execute SYS:GlassIconsBackup/Restore [QUIET]`): checks the copies against the
+- **Restore** (`SYS:GlenzBackup/Restore`, plain AmigaDOS: no plugin, no Installer; double-click it
+  (IconX, asks first) or `Execute SYS:GlenzBackup/Restore [QUIET]`): checks the copies against the
   lists (any change → restores nothing and names the files), copies them back with `Copy ALL CLONE`
   (ENVARC files also to ENV:), checks every restored file against the lists and names any mismatch;
   on success deletes the marker. The images stay (Install → Remove deletes them).
 - **Install again:** with the marker = update (backup kept, new icons added). Without it (the set was
-  restored) an old backup is renamed `SYS:GlassIconsBackup.old` (replacing an older .old) and a fresh one
+  restored) an old backup is renamed `SYS:GlenzBackup.old` (replacing an older .old) and a fresh one
   is made, so a backup is never mixed with icons changed after a restore.
 - **Remove** (Install): runs Restore QUIET; only when it succeeds deletes the images (ENVARC: and ENV:).
   The backup drawer stays until the user deletes it.
-- **Built and tested 2026-11-16:** `tools/iconset_build.py package` → dist/GlassIcons.lha (230 files,
+- **Built and tested 2026-11-16, again with the final names 2026-11-17 (64/64):** `tools/iconset_build.py package` → dist/emblem_icons_glenz.lha (230 files,
   1.3 MB; package/iconset/README.md). Guest cycle `tests/os4/run_iconset.py`: 60/60 — 233 files saved
   (MD5 + date + protection + comment equal), 232 icons become Emblem icons (10 → 242 in SYS:), 7 composed
   exactly like the host renders, update keeps the backup, Restore and Remove put every file back exactly
@@ -368,5 +369,34 @@ Earlier notes:
 
 
 - Default images and emblems go to ENVARC:sys/emblem as now.
-- Install converts the chosen icons to Emblem icons with their tool types (EmblemIcon), after a backup.
+- Install converts the chosen icons to Emblem icons with their settings (EmblemIcon), after a backup.
 - Remove converts them back and restores the backup, so the user's own icons are never lost.
+
+## The stock icons not mapped yet (user, 2026-11-17)
+
+Went through the 546 unmapped stock icons by drawer (the decisions live in `tools/iconset_build.py`,
+the lists in docs/iconset_mapping.md):
+- Everything below SYS:Emulation stays classic; only its two drawer icons (AmigaDisks, AmigaROMs, already
+  in the set) get the set.
+- Icons in a drawer that has no icon itself are left alone (55).
+- **To do (31):** SYS:ChangeLog.guide, the six drawers in SYS:Prefs/Presets, SYS:System/AmiUpdate
+  (AmiUpdate, System_RollBack), SYS:System/Python (Lib, Python), AmiGS, AmiPDF, the 16 commodities,
+  SGrab and its guide.
+- **Not needed (58):** SYS:Documentation's SFTPHandler drawer and files, AmiSSL docs, the MiniGL demos,
+  SYS:Prefs/sftphprefs.
+- **Set aside for now (263):** DataTypes, DOSDrivers, monitors and printers (Devs and Storage), MUI and its
+  demos/docs, the Presets' AmiDock/Default/SilverGreen contents, NetInterfaces, Blankers, Dockies.
+- **The PDF swirl** on the AmiPDF and AmiGS emblems stays (user, 2026-11-17): the stock OS 4.1 icons and
+  free PDF icons all use a swirl of their own; ours is a free drawing of that idea. Not an open question
+  any more; the AmiPDF/AmiGS program icons (to do) keep it too.
+
+## Names (user, 2026-11-17)
+
+- Plugin archive **emblem_icons.lha** (the small sample set and the tools); the set's archive
+  **emblem_icons_glenz.lha**; the set is called **Glenz**: drawer `Glenz` in its archive, images in
+  `ENVARC:sys/emblem/glenz/`, backup drawer `SYS:GlenzBackup` (each name in one place in
+  `tools/iconset_build.py`; the plugin archive's in `tools/make_lha.sh`).
+- **Open issue:** the images in their own drawer (`glenz/`) or directly in `ENVARC:sys/emblem`. For the
+  drawer: no name clashes with the user's own images or the samples, Install/Remove replace or delete
+  just that drawer, several sets can sit side by side, and a setting says where its image comes from
+  (`IMAGE=glenz/p_printer`). Against: a few more characters per setting. Changing it is the `SET` name.

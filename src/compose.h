@@ -88,7 +88,7 @@ int cp_scale(uint8_t *dst, uint32_t dw, uint32_t dh, const uint8_t *src, uint32_
 void cp_over(uint8_t *dst, uint32_t dw, uint32_t dh, const uint8_t *src, uint32_t sw, uint32_t sh,
              int32_t x, int32_t y);
 
-/* Emblem size from the tool type: 0,0 = the emblem's own size; one of them 0
+/* Emblem size from the setting: 0,0 = the emblem's own size; one of them 0
  * = keep the aspect ratio. */
 void cp_emblem_size(const ESEmblem *e, uint32_t sw, uint32_t sh, uint32_t *w, uint32_t *h);
 
@@ -102,7 +102,7 @@ typedef struct CPScaleCache
 	void            *ctx;
 } CPScaleCache;
 
-/* Compose an icon's images from its tool types (docs/plan.md section 1).
+/* Compose an icon's images from its settings (docs/plan.md section 1).
  * prefs supplies the methods for ES_DEFAULT and the effect settings; cache
  * may be NULL. Returns 1 with res filled (buffers from out), 0 if there is
  * nothing to compose, -1 if memory ran out. */

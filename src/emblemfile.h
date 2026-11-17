@@ -79,6 +79,9 @@ typedef struct EFIcon
 	uint32_t    toolwindowlen;
 	const char *tooltypes;        /* NULL = none; packed NUL-terminated strings */
 	uint32_t    tooltypeslen;
+	const char *settings;         /* ESET: the Emblem settings (IMAGE=, EMBLEM=, ...), packed
+	                               * like the tool types; NULL = none */
+	uint32_t    settingslen;
 
 	EFImage     img[2];           /* chunky (ARGB/CLUT) images: [0] normal, [1] selected */
 	EFImage     planar[2];        /* planar images: old icons, or the fallback of chunky icons */
@@ -105,6 +108,10 @@ uint32_t ef_file_size(const uint8_t *buf, uint32_t len);
 /* Parse a whole file. */
 int ef_parse(const uint8_t *buf, uint32_t len, EFIcon *icon);
 
+/* Parse one whole IMAG chunk (ID, length, data, as ef_parse() keeps it in img->chunk):
+ * *state = 0 normal, 1 selected. Zero-copy like ef_parse(). */
+int ef_parse_imag(const uint8_t *chunk, uint32_t len, EFImage *img, uint8_t *state);
+
 /* Decompress (or copy) an image's stored data into dst (img->datalen bytes). */
 int ef_image_unpack(const EFImage *img, uint8_t *dst, ef_uncompress_fn fn, void *ctx);
 
@@ -118,7 +125,7 @@ uint32_t ef_write_bound(const EFIcon *icon);
 int ef_write(const EFIcon *icon, uint8_t *dst, uint32_t dstmax, uint32_t *outlen,
              ef_compress_fn fn, void *ctx);
 
-/* Number of tool type strings in a packed tool type block. */
+/* Number of strings in a packed block (tool types, settings). */
 uint32_t ef_count_tooltypes(const char *tt, uint32_t len);
 
 #endif

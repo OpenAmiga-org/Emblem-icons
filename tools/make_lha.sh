@@ -1,5 +1,5 @@
 #!/bin/bash
-# Puts the release together and packs it: dist/Emblem.lha and dist/Emblem.readme
+# Puts the release together and packs it: dist/emblem_icons.lha and dist/emblem_icons.readme
 #
 #   make os4 tools && tools/make_lha.sh
 #
@@ -25,7 +25,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LHA="${LHA:-$HOME/linux_archivers/lha/lha}"
 RELEASES="${RELEASES:-/media/sf_claude_folder/releases}"
 STAGE="$ROOT/build/stage"
-OUT="${OUT:-$ROOT/dist/Emblem.lha}"        # OUT=... for test builds
+OUT="${OUT:-$ROOT/dist/emblem_icons.lha}"  # OUT=... for test builds (the readme goes next to it)
+README_OUT="${OUT%.lha}.readme"
 REV="$ROOT/src/emblem.iconmodule_rev.h"
 
 ver=$(sed -n 's/^#define VERSION *\([0-9]*\)/\1/p' "$REV").$(sed -n 's/^#define REVISION *\([0-9]*\)/\1/p' "$REV")
@@ -85,10 +86,10 @@ done
 rm -f "$OUT"
 (cd "$STAGE" && "$LHA" aq2o5 "$OUT" Emblem.info Emblem.readme Emblem)
 "$LHA" l "$OUT" | tail -3
-cp "$STAGE/Emblem.readme" "$ROOT/dist/"
+cp "$STAGE/Emblem.readme" "$README_OUT"
 echo "version $ver -> $OUT"
 if [ -d "$RELEASES" ]; then
-	cp -p "$OUT" "$STAGE/Emblem.readme" "$RELEASES/"
+	cp -p "$OUT" "$README_OUT" "$RELEASES/"
 	echo "copied LHA and readme to $RELEASES"
 else
 	echo "note: $RELEASES not found, nothing copied" >&2

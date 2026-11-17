@@ -12,10 +12,16 @@ running guest reachable as target "os4-amigaone".
 Step 1, for every test icon (made natively by icontest, plus copies of system
 icons), comparing the icon's own data (icontest raw dump):
  1. dump native -> EmblemIcon TO=EMBLEM -> dump: same apart from the format
- 2. tool type edit + save keeps the Emblem format (Information window path)
+ 2. tool type edit + save keeps the Emblem format (Information window path); an
+    Emblem setting (EMBLEMA_SetSettings) is saved apart from the tool types
  3. snapshot (ICONPUTA_OnlyUpdatePosition) changes only the 8 position bytes
  4. DupDiskObject + save under a new name stays Emblem and identical
- 5. EmblemIcon TO=AMIGA -> dump: same as the original native dump
+ 5. EmblemIcon TO=AMIGA -> dump: same as the original native dump (no settings)
+Then EmblemIcon's SET, UNSET and TYPE: the four Emblem keys go to the settings.
+
+The Emblem keys (IMAGE=... below) are the icon's settings in the Emblem file
+(icontest tt puts them there, dump shows them as es= lines), not tool types;
+as tool types they do nothing.
 
 Step 2 (IMAGE=/IMAGESELECTED= default images from ENVARC:sys/emblem, test
 images from tests/os4/make_test_pngs.py):
@@ -28,7 +34,7 @@ images from tests/os4/make_test_pngs.py):
 Step 3 (EMBLEM=/EMBLEMSELECTED=, sizes, positions, clipping, INTERNAL, the
 NONE/DARK/BRIGHT/GRAY methods): for each case the module's images must be
 exactly what build/host/render makes from the icon's own images (icontest
-pixels) and the same tool types; the icon's own images stay in the file.
+pixels) and the same settings; the icon's own images stay in the file.
 
 Step 4 (SHADOW, GLOW, emblem.prefs): the same comparison with the built-in
 settings and with prefs files in ENV:sys (and ENVARC:sys only); the host
@@ -36,7 +42,7 @@ renderer gets the same file with --prefs.
 
 Step 5 (robustness and speed): see plan section 13 and --only= below.
 
-Step 6 (the package, dist/Emblem.lha from tools/make_lha.sh; only with
+Step 6 (the package, dist/emblem_icons.lha from tools/make_lha.sh or --plugin=PATH; only with
 --step=6, as it takes the module out of the guest, installs it with the
 Install script, removes it again and resets the guest three times): Install
 run by the Installation Utility in Novice mode (ENV:EmblemInstallTest), the
@@ -178,6 +184,10 @@ async def main():
     ok("module in memory", rc == 0 and "emblem.iconmodule" in out, out.strip())
 
     steps = {int(a.split("=")[1]) for a in sys.argv if a.startswith("--step=")} or {1, 2, 3, 4, 5}
+    if steps & {2, 3, 5}:
+        # their expected pixels assume the built-in settings: no emblem.prefs (an installed
+        # package leaves one with EMBLEMMETHOD=SHADOW; step 4 makes its own)
+        await put_prefs(g, None)
     if 1 in steps:
         await step1(g)
     if 2 in steps:
@@ -240,6 +250,17 @@ async def step1(g):
         ok(f"{short}: only the tool type changed", strip_format(d) == expect,
            "; ".join(f"{a} -> {b}" for a, b in zip(expect, strip_format(d)) if a != b))
 
+        # 2b. an Emblem setting (no such image: nothing is composed) is kept in the file, not in
+        #     the tool types; snapshot, layout save and duplicate below must keep it
+        es = "EMBLEM=EmblemTestNope,0,0,1,1"
+        rc, out = await g.cmd(f'{G}/icontest tt {n} "{es}"')
+        rc2, d = await g.dump(n)
+        i = [j for j, l in enumerate(expect) if l.startswith("pos=")][0]
+        expect = expect[:i] + [f"es={es}"] + expect[i:]
+        ok(f"{short}: setting saved apart from the tool types", rc == 0 and fmt(d) == "Emblem"
+           and strip_format(d) == expect,
+           out.strip() + " | " + "; ".join(f"{a} -> {b}" for a, b in zip(expect, strip_format(d)) if a != b))
+
         # 3. snapshot
         local = os.path.join(WORK, short + ".before")
         before = await g.down(n + ".info", local)
@@ -294,42 +315,70 @@ def tts(lines):
     return [l[3:] for l in lines if l.startswith("tt=")]
 
 
-def no_tts(lines):
-    return [l for l in strip_format(lines) if not l.startswith("tt=")]
+def ess(lines):
+    """the Emblem settings (icontest dump's es= lines)"""
+    return [l[3:] for l in lines if l.startswith("es=")]
+
+
+def no_lists(lines):
+    return [l for l in strip_format(lines) if not l.startswith(("tt=", "es="))]
 
 
 async def step1_set(g):
-    """EmblemIcon 1.1: SET, UNSET and TYPE (bulk tool types)"""
+    """EmblemIcon 1.2: SET, UNSET and TYPE; IMAGE, IMAGESELECTED, EMBLEM and EMBLEMSELECTED are
+    the icon's settings (in the Emblem file), every other key a tool type"""
     T = f"{G}/tt"
     EI = f"{G}/EmblemIcon"
     await g.cmd(f"Delete {T} ALL QUIET FORCE", timeout=20)
     await g.cmd(f"MakeDir {T}", timeout=10)
-    for src, dst in (("drawer", "d1"), ("drawer", "d2"), ("argb", "p1"), ("argb", "p2")):
+    for src, dst in (("drawer", "d1"), ("drawer", "d2"), ("argb", "p1"), ("argb", "p2"), ("argb", "p3")):
         await g.cmd(f"Copy {G}/{src}.info {T}/{dst}.info QUIET", timeout=10)
     rc, d1n = await g.dump(f"{T}/d1")
     rc, p1n = await g.dump(f"{T}/p1")
     ok("SET test icons: d1 a drawer, p1 not", val(d1n, "type") == "2" and val(p1n, "type") != "2",
        f"{val(d1n, 'type')} {val(p1n, 'type')}")
 
-    # convert and set in one go; the icon's own images and other data stay
-    rc, out = await g.cmd(f'{EI} {T}/d1 TO=EMBLEM SET="IMAGE=GlassDrawer|EMBLEM=INTERNAL,30,30,33,30"')
+    # convert and set in one go: the Emblem keys become settings, the other key a tool type
+    # (the test icons already have NEWTT=1 from step 1);
+    # the icon's own images and other data stay
+    rc, out = await g.cmd(f'{EI} {T}/d1 TO=EMBLEM SET="IMAGE=GlassDrawer|EMBLEM=INTERNAL,30,30,33,30|SETTEST=1"')
     rc2, d1 = await g.dump(f"{T}/d1")
-    ok("SET with TO=EMBLEM: converted, tool types added", rc == 0 and "converted to Emblem, tool types changed" in out
-       and fmt(d1) == "Emblem" and tts(d1) == tts(d1n) + ["IMAGE=GlassDrawer", "EMBLEM=INTERNAL,30,30,33,30"], out + " " + str(tts(d1)))
-    ok("SET with TO=EMBLEM: own images and data unchanged", no_tts(d1) == no_tts(d1n), diffs(no_tts(d1n), no_tts(d1)))
+    ok("SET with TO=EMBLEM: converted, settings and tool type added",
+       rc == 0 and "converted to Emblem, tool types and settings changed" in out and fmt(d1) == "Emblem"
+       and ess(d1) == ["IMAGE=GlassDrawer", "EMBLEM=INTERNAL,30,30,33,30"] and tts(d1) == tts(d1n) + ["SETTEST=1"],
+       out + " " + str(tts(d1)) + " " + str(ess(d1)))
+    ok("SET with TO=EMBLEM: own images and data unchanged", no_lists(d1) == no_lists(d1n),
+       diffs(no_lists(d1n), no_lists(d1)))
+    rc, out = await g.cmd(f"{EI} {T}/d1")
+    ok("EmblemIcon shows tool types and settings apart",
+       "2 settings" in out and "  Settings:\n    IMAGE=GlassDrawer\n    EMBLEM=INTERNAL,30,30,33,30" in out
+       and "  Tool types:\n" in out and "    SETTEST=1\n" in out.split("Settings:")[0], out)
 
     # replace in place (key case ignored), duplicates removed
     await g.cmd(f'{G}/icontest tt {T}/d1 "IMAGE=Duplicate"')
     rc, out = await g.cmd(f'{EI} {T}/d1 SET="image=Other"')
     rc2, d1b = await g.dump(f"{T}/d1")
-    want = tts(d1n) + ["image=Other", "EMBLEM=INTERNAL,30,30,33,30"]
-    ok("SET replaces the first IMAGE in place and drops the duplicate", rc == 0 and tts(d1b) == want and fmt(d1b) == "Emblem",
-       f"{out} {tts(d1b)}")
+    ok("SET replaces the first IMAGE in place and drops the duplicate",
+       rc == 0 and ess(d1b) == ["image=Other", "EMBLEM=INTERNAL,30,30,33,30"] and tts(d1b) == tts(d1)
+       and fmt(d1b) == "Emblem" and "settings changed" in out, f"{out} {ess(d1b)}")
     rc, out = await g.cmd(f'{EI} {T}/d1 SET="image=Other"')
     ok("SET again: no change", rc == 0 and "no change" in out, out)
 
-    # back to native without the tool types: as it was
-    rc, out = await g.cmd(f'{EI} {T}/d1 TO=AMIGA UNSET="IMAGE|emblem"')
+    # a setting without TO makes a native icon an Emblem icon; TO=AMIGA can't take one
+    rc, out = await g.cmd(f'{EI} {T}/p3 SET="EMBLEM=Star"')
+    rc2, p3 = await g.dump(f"{T}/p3")
+    ok("SET of a setting without TO: converted to Emblem", rc == 0 and fmt(p3) == "Emblem"
+       and ess(p3) == ["EMBLEM=Star"] and tts(p3) == tts(p1n), out + " " + str(ess(p3)))
+    rc, out = await g.cmd(f'{EI} {T}/p3 TO=AMIGA SET="EMBLEM=Star"')
+    ok("TO=AMIGA with a setting: error, rc 20", rc == 20 and "not with TO=AMIGA" in out, out)
+    rc, out = await g.cmd(f"{EI} {T}/p3 TO=AMIGA")
+    rc2, p3 = await g.dump(f"{T}/p3")
+    ok("TO=AMIGA drops the settings: native, as made", rc == 0 and fmt(p3) == "Amiga"
+       and strip_format(p3) == strip_format(p1n), out + " " + diffs(strip_format(p1n), strip_format(p3)))
+    await g.cmd(f"Delete {T}/p3.info QUIET", timeout=10)
+
+    # back to native without the tool type: as it was
+    rc, out = await g.cmd(f'{EI} {T}/d1 TO=AMIGA UNSET="IMAGE|emblem|settest"')
     rc2, d1c = await g.dump(f"{T}/d1")
     ok("TO=AMIGA UNSET: native again, exactly as before", rc == 0 and fmt(d1c) == "Amiga"
        and strip_format(d1c) == strip_format(d1n), out + " " + diffs(strip_format(d1n), strip_format(d1c)))
@@ -340,26 +389,38 @@ async def step1_set(g):
     dumps = {}
     for k in ("d1", "d2", "p1", "p2"):
         rc2, dumps[k] = await g.dump(f"{T}/{k}")
-    ok("ALL TYPE=DRAWER TO=EMBLEM SET: both drawers converted with the tool type",
-       all(fmt(dumps[k]) == "Emblem" and "IMAGE=GlassDrawer" in tts(dumps[k]) for k in ("d1", "d2"))
-       and "2 icons converted to Emblem, 2 with changed tool types" in out, out)
+    ok("ALL TYPE=DRAWER TO=EMBLEM SET: both drawers converted with the setting",
+       all(fmt(dumps[k]) == "Emblem" and ess(dumps[k]) == ["IMAGE=GlassDrawer"] for k in ("d1", "d2"))
+       and "2 icons converted to Emblem, 2 changed" in out, out)
     ok("ALL TYPE=DRAWER: other icons untouched", fmt(dumps["p1"]) == "Amiga" and fmt(dumps["p2"]) == "Emblem"
-       and "IMAGE=GlassDrawer" not in tts(dumps["p1"]) + tts(dumps["p2"]), out)
+       and not ess(dumps["p1"]) + ess(dumps["p2"]), out)
 
-    # SET without TO in an ALL run: Emblem icons only
+    # a tool type without TO in an ALL run: Emblem icons only
+    rc, out = await g.cmd(f'{EI} {T} ALL SET="SETTEST=2"', timeout=60)
+    for k in ("d1", "d2", "p1", "p2"):
+        rc2, dumps[k] = await g.dump(f"{T}/{k}")
+    ok("ALL SET of a tool type without TO: the 3 Emblem icons changed, the native one not",
+       all("SETTEST=2" in tts(dumps[k]) for k in ("d1", "d2", "p2")) and "SETTEST=2" not in tts(dumps["p1"])
+       and fmt(dumps["p1"]) == "Amiga" and "3 changed" in out, out)
+
+    # a setting without TO in an ALL run: every icon (the native one converted)
     rc, out = await g.cmd(f'{EI} {T} ALL SET="EMBLEM=Star"', timeout=60)
     for k in ("d1", "d2", "p1", "p2"):
         rc2, dumps[k] = await g.dump(f"{T}/{k}")
-    ok("ALL SET without TO: the 3 Emblem icons changed, the native one not",
-       all("EMBLEM=Star" in tts(dumps[k]) for k in ("d1", "d2", "p2")) and "EMBLEM=Star" not in tts(dumps["p1"])
-       and fmt(dumps["p1"]) == "Amiga" and "3 with changed tool types" in out, out)
+    ok("ALL SET of a setting without TO: all 4 Emblem icons with it",
+       all(fmt(dumps[k]) == "Emblem" and "EMBLEM=Star" in ess(dumps[k]) for k in ("d1", "d2", "p1", "p2"))
+       and "1 icon converted to Emblem, 4 changed" in out, out)
+    ok("... no setting in any tool types", not [t for k in dumps for t in tts(dumps[k])
+                                                 if t.split("=")[0].upper() in ("IMAGE", "EMBLEM")], out)
 
     # all back, tool types removed
-    rc, out = await g.cmd(f'{EI} {T} ALL TO=AMIGA UNSET="IMAGE|EMBLEM"', timeout=60)
+    rc, out = await g.cmd(f'{EI} {T} ALL TO=AMIGA UNSET="IMAGE|EMBLEM|SETTEST"', timeout=60)
     rc2, d2 = await g.dump(f"{T}/d2")
     rc3, d2n = await g.dump(f"{G}/drawer")
+    rc4, p1 = await g.dump(f"{T}/p1")
     ok("ALL TO=AMIGA UNSET: all native, as made", rc == 0 and fmt(d2) == "Amiga"
-       and strip_format(d2) == strip_format(d2n), out + " " + diffs(strip_format(d2n), strip_format(d2)))
+       and strip_format(d2) == strip_format(d2n) and strip_format(p1) == strip_format(p1n),
+       out + " " + diffs(strip_format(d2n), strip_format(d2)) + diffs(strip_format(p1n), strip_format(p1)))
 
     # bad arguments
     rc, out = await g.cmd(f'{EI} {T}/d1 SET="NOEQUALS"')
@@ -380,12 +441,27 @@ def val(lines, key):
     return None
 
 
+SETTING_KEYS = ("IMAGE", "IMAGESELECTED", "EMBLEM", "EMBLEMSELECTED")
+
+
+def is_setting(t):
+    """icontest tt and EmblemIcon put these keys in the Emblem settings, not the tool types"""
+    return t.split("=", 1)[0].upper() in SETTING_KEYS
+
+
 def add_tts(lines, new):
-    """expected dump lines with tool types appended after the existing ones"""
+    """expected dump lines with new entries appended: tool types after the existing tt= lines,
+    the Emblem settings after the es= lines (dump: tt=, es=, then pos=)"""
     out = list(lines)
     tts = [l for l in out if l.startswith("tt=")]
     i = out.index(tts[-1]) + 1 if tts else [j for j, l in enumerate(out) if l.startswith("deftool=")][0] + 1
-    return out[:i] + [f"tt={t}" for t in new] + out[i:]
+    out = out[:i] + [f"tt={t}" for t in new if not is_setting(t)] + out[i:]
+    j = [k for k, l in enumerate(out) if l.startswith("pos=")][0]
+    return out[:j] + [f"es={t}" for t in new if is_setting(t)] + out[j:]
+
+
+def no_settings(lines):
+    return [l for l in lines if not l.startswith("es=")]
 
 
 def diffs(a, b):
@@ -455,8 +531,9 @@ async def step2(g):
 
         rc, out = await g.cmd(f"{G}/EmblemIcon {n} TO=AMIGA QUIET")
         rc2, back = await g.dump(n)
-        ok(f"{short}: back to native with own images", rc == 0 and fmt(back) == "Amiga"
-           and strip_format(back) == expect_l, out.strip() + " | " + diffs(expect_l, strip_format(back)))
+        ok(f"{short}: back to native with own images, without the settings", rc == 0 and fmt(back) == "Amiga"
+           and strip_format(back) == no_settings(expect_l),
+           out.strip() + " | " + diffs(no_settings(expect_l), strip_format(back)))
 
     # --- single cases on the ARGB test icon (48x40 with a selected image)
     counter = [0]
@@ -497,6 +574,14 @@ async def step2(g):
     await case("disabled tool type ignored",
                ["(IMAGE=EmblemTestNS)"],
                lambda c, r, r0: strip_format(c) == strip_format(r))
+    # the keys as real tool types (as Emblem 1.0 kept them) do nothing: only the settings count
+    n, raw0 = await emblem_with("argb", "ttonly", [])
+    if n:
+        rc, out = await g.cmd(f'{G}/icontest ttonly {n} "IMAGE=EmblemTestNS"')
+        rc2, raw = await g.dump(n)
+        rc3, comp = await g.dump(n, raw=False)
+        ok("IMAGE= as a tool type: ignored, nothing composed", rc == 0 and "tt=IMAGE=EmblemTestNS" in raw
+           and not ess(raw) and strip_format(comp) == strip_format(raw), out + " " + " ".join(comp[-7:]))
     await case("planar icon with IMAGE only",
                ["IMAGE=EmblemTestNS"],
                lambda c, r, r0: val(c, "imgfmt") == "2" and val(c, "img1").upper() == crc("EmblemTestNS")
@@ -602,9 +687,9 @@ async def check_case(g, gdir, kind, short, tts, prefs=None):
             args += [f"--own{i}", lf]
     for t in tts:
         await g.cmd(f'{G}/icontest tt {n} "{t}"')
-    # all of the icon's tool types (the first of a key counts)
+    # all of the icon's settings (the first of a key counts)
     rc, rawt = await g.dump(n)
-    alltts = [l[3:] for l in rawt if l.startswith("tt=")]
+    alltts = ess(rawt)
     want = subprocess.run(args + alltts, capture_output=True, text=True).stdout.split()
     want = dict(w.split("=", 1) for w in want)
     rc, comp = await g.dump(n, raw=False)
@@ -732,7 +817,7 @@ async def render_check(g, n, own_prefix, name, extra_args=(), ttfile=None):
         args += ["--ttfile", ttfile]
     else:
         rc, rawt = await g.dump(n)
-        args += [l[3:] for l in rawt if l.startswith("tt=")]
+        args += ess(rawt)
     want = subprocess.run(list(args) + list(extra_args), capture_output=True, text=True).stdout.split()
     want = dict(w.split("=", 1) for w in want if "=" in w)
     rc, comp = await g.dump(n, raw=False)
@@ -1163,7 +1248,9 @@ async def unpack(g, lha):
 
 
 async def step6(g):
-    lha = os.path.join(ROOT, "dist", "Emblem.lha")
+    # --plugin=PATH: a test build (OUT=... tools/make_lha.sh) instead of the release in dist/
+    lha = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--plugin=")),
+               os.path.join(ROOT, "dist", "emblem_icons.lha"))
     art = os.path.join(ROOT, "art")
     # the package's sample set: the images the examples use
     pngs = [n + ".png" for n in subprocess.run([os.path.join(ROOT, "tools", "make_examples.py"), "--images"],
@@ -1242,7 +1329,7 @@ async def step6(g):
             if os.path.exists(lf):
                 args += [f"--own{i}", lf]
         rc, rawt = await g.dump(n)
-        want = subprocess.run(args + [l[3:] for l in rawt if l.startswith("tt=")], capture_output=True,
+        want = subprocess.run(args + ess(rawt), capture_output=True,
                               text=True).stdout.split()
         want = dict(w.split("=", 1) for w in want if "=" in w)
         rc, comp = await g.dump(n, raw=False)
@@ -1299,8 +1386,9 @@ async def step6(g):
     ok("remove: script ran to the end", "Exiting script" in log, log[-400:])
     rc, after = await g.dump(f"{T6}/Mine")
     ok("remove: the user icon is a native icon again", fmt(after) == "Amiga", " ".join(after[:3]))
-    ok("remove: ... with its own picture and tool types", strip_format(after) == strip_format(mine),
-       diffs(strip_format(mine), strip_format(after)))
+    ok("remove: ... with its own picture and tool types (the settings can't stay in a native icon)",
+       ess(mine) and strip_format(after) == no_settings(strip_format(mine)),
+       diffs(no_settings(strip_format(mine)), strip_format(after)))
     for f in ["LIBS:IconModules/emblem.iconmodule", "C:EmblemIcon", "ENVARC:sys/emblem.prefs", "ENV:sys/emblem.prefs",
               DOCS, f"{DOCS}.info", "ENV:EmblemRemove.out"] + [f"ENVARC:sys/emblem/{p}" for p in pngs]:
         rc, out = await g.cmd(f'List "{f}" LFORMAT "%N"', timeout=10)

@@ -79,6 +79,7 @@ static void free_icon(EFIcon *ic)
 	free((void *)ic->deftool);
 	free((void *)ic->toolwindow);
 	free((void *)ic->tooltypes);
+	free((void *)ic->settings);
 	for (i = 0; i < 2; i++)
 	{
 		free((void *)ic->img[i].data); free((void *)ic->img[i].palette);
@@ -114,6 +115,14 @@ static void rand_icon(EFIcon *ic)
 		for (i = 0; i < n; i++) { char *s = rand_str(&l); memcpy(tt + pos, s, l + 1); pos += l + 1; free(s); }
 		ic->tooltypes = tt;
 		ic->tooltypeslen = pos;
+	}
+	if (rnd() % 3)
+	{
+		uint32_t n = rnd() % 5, i, l, pos = 0;
+		char *es = malloc(n * 41 + 1);
+		for (i = 0; i < n; i++) { char *s = rand_str(&l); memcpy(es + pos, s, l + 1); pos += l + 1; free(s); }
+		ic->settings = es;
+		ic->settingslen = pos;
 	}
 	if (rnd() % 8)
 	{
@@ -157,6 +166,7 @@ static void compare(const EFIcon *a, const EFIcon *b, const char *what)
 	CHECK(same_str(a->deftool, a->deftoollen, b->deftool, b->deftoollen), "%s deftool", what);
 	CHECK(same_str(a->toolwindow, a->toolwindowlen, b->toolwindow, b->toolwindowlen), "%s toolwindow", what);
 	CHECK(same_str(a->tooltypes, a->tooltypeslen, b->tooltypes, b->tooltypeslen), "%s tooltypes", what);
+	CHECK(same_str(a->settings, a->settingslen, b->settings, b->settingslen), "%s settings", what);
 	for (i = 0; i < 4; i++)
 	{
 		const EFImage *x = i < 2 ? &a->img[i] : &a->planar[i - 2], *y = i < 2 ? &b->img[i] : &b->planar[i - 2];
@@ -245,6 +255,23 @@ int main(void)
 			r = ef_parse(buf, len, &b);
 			CHECK(r == EF_OK, "%s parse %d", what, r);
 			if (r == EF_OK) compare(&a, &b, what);
+			/* every IMAG chunk parses alone the same (ef_parse_imag) */
+			if (r == EF_OK)
+			{
+				int i;
+				for (i = 0; i < 4; i++)
+				{
+					const EFImage *x = i < 2 ? &b.img[i] : &b.planar[i - 2];
+					EFImage y;
+					uint8_t st = 9;
+					if (!x->present) continue;
+					CHECK(ef_parse_imag(x->chunk, x->chunklen, &y, &st) == EF_OK && st == (i & 1)
+					      && y.kind == x->kind && y.width == x->width && y.height == x->height
+					      && y.datalen == x->datalen && y.data == x->data && y.complen == x->complen,
+					      "%s imag %d alone", what, i);
+				}
+				CHECK(ef_parse_imag(buf, len, &(EFImage){0}, &(uint8_t){0}) != EF_OK, "%s FORM is no IMAG", what);
+			}
 			/* the snapshot position is where the format says */
 			CHECK(buf[EF_POSOFFSET] == (uint8_t)((uint32_t)a.curx >> 24)
 			      && buf[EF_POSOFFSET + 7] == (uint8_t)a.cury, "%s position offset", what);
@@ -285,6 +312,44 @@ int main(void)
 		CHECK(ef_write(&b, buf2, sizeof(buf2), &len2, NULL, NULL) == EF_OK && len2 == len
 		      && memcmp(buf, buf2, len) == 0, "unknown rewrite identical");
 		CHECK(ef_parse(buf2, len2, &c) == EF_OK && c.nunknown == 1, "unknown reparse");
+	}
+
+	/* settings (ESET): written, read back, checked like the tool types */
+	{
+		EFIcon a, b;
+		uint8_t buf[512], buf2[600];
+		const char es[] = "IMAGE=Drawer\0EMBLEM=INTERNAL,30,30,33,30,SHADOW";
+		const char tt[] = "DONOTWAIT";
+		uint32_t len, pos;
+		memset(&a, 0, sizeof(a));
+		a.type = 2;
+		a.tooltypes = tt;
+		a.tooltypeslen = sizeof(tt);
+		a.settings = es;
+		a.settingslen = sizeof(es);
+		CHECK(ef_write(&a, buf, sizeof(buf), &len, NULL, NULL) == EF_OK, "settings write");
+		CHECK(ef_parse(buf, len, &b) == EF_OK && b.settingslen == sizeof(es)
+		      && memcmp(b.settings, es, sizeof(es)) == 0 && ef_count_tooltypes(b.settings, b.settingslen) == 2
+		      && b.tooltypeslen == sizeof(tt) && b.nunknown == 0, "settings parse");
+		/* not NUL-terminated: refused on writing */
+		a.settingslen = sizeof(es) - 1;
+		CHECK(ef_write(&a, buf2, sizeof(buf2), &len, NULL, NULL) == EF_ERR_CORRUPT, "settings unterminated");
+		/* two ESET chunks: corrupt */
+		a.settingslen = sizeof(es);
+		CHECK(ef_write(&a, buf, sizeof(buf), &len, NULL, NULL) == EF_OK, "settings write 2");
+		for (pos = 12; pos + 8 <= len && memcmp(buf + pos, "ESET", 4) != 0; )
+			pos += 8 + (((buf[pos + 4] << 24 | buf[pos + 5] << 16 | buf[pos + 6] << 8 | buf[pos + 7]) + 1u) & ~1u);
+		CHECK(pos + 8 <= len, "settings chunk found");
+		if (pos + 8 <= len)
+		{
+			uint32_t clen = 8 + ((sizeof(es) + 1u) & ~1u), total;
+			memcpy(buf2, buf, len);
+			memcpy(buf2 + len, buf + pos, clen);
+			total = len + clen - 8;
+			buf2[4] = (uint8_t)(total >> 24); buf2[5] = (uint8_t)(total >> 16);
+			buf2[6] = (uint8_t)(total >> 8); buf2[7] = (uint8_t)total;
+			CHECK(ef_parse(buf2, len + clen, &b) == EF_ERR_CORRUPT, "two settings chunks");
+		}
 	}
 
 	/* not an Emblem file: native icon magic, PNG */

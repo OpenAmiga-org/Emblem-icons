@@ -1,10 +1,10 @@
 @DATABASE Emblem.guide
-@$VER: Emblem.guide 1.0 (15.11.2026)
+@$VER: Emblem.guide 1.1 (16.11.2026)
 @AUTHOR Björn Hagström
 @WORDWRAP
 @NODE MAIN "Emblem"
 
-@{b}Emblem 1.0@{ub} - icons with default images and emblems
+@{b}Emblem 1.1@{ub} - icons with default images and emblems
 
 Emblem lets an icon borrow a shared default image (a drawer, a page) and
 put an emblem on it: a small picture that says what is inside, like a
@@ -18,7 +18,7 @@ ENVARC:sys/emblem and every icon that uses it changes with it.
 
   @{" Installing         " link INSTALL}
   @{" Quick start        " link QUICK}
-  @{" The tool types     " link TOOLTYPES}
+  @{" The settings       " link TOOLTYPES}
   @{" Methods (effects)  " link METHODS}
   @{" Settings file      " link PREFS}
   @{" Images and emblems " link IMAGES}
@@ -67,33 +67,33 @@ Normal icons are never shown to icon modules (icon.library reads them
 itself), so an icon must be in the Emblem format first. To give the drawer
 Work:Music a music emblem:
 
-1. In a Shell:
+In a Shell (one line):
 
-     EmblemIcon Work:Music TO=EMBLEM
+  EmblemIcon Work:Music SET="IMAGE=DrawerNS|IMAGESELECTED=DrawerS|
+    EMBLEM=EmblemMusic,28,28,34,32|EMBLEMSELECTED=EmblemMusic,28,28,34,32"
 
-   The icon looks the same: it still has its own picture.
+The icon becomes an Emblem icon with these four settings. Close and open
+the drawer window it is in: the drawer now shows the sample drawer image
+with a note on it, with a soft shadow if you kept the installer's choice.
 
-2. Select the icon, choose @{i}Icons > Information...@{ui} and add these
-   tool types:
+The settings are kept in the icon file, not in its tool types (programs
+that read their tool types as arguments would choke on them), so the
+Information window doesn't show them. "EmblemIcon Work:Music" does.
 
-     IMAGE=DrawerNS
-     IMAGESELECTED=DrawerS
-     EMBLEM=EmblemMusic,28,28,34,32
-     EMBLEMSELECTED=EmblemMusic,28,28,34,32
-
-   Save. The drawer now shows the sample drawer image with a note on it,
-   with a soft shadow if you kept the installer's choice.
-
-The icon keeps its own picture all the time: without these tool types,
-or if an image is missing, it is shown again. "EmblemIcon Work:Music
+The icon keeps its own picture all the time: without these settings, or
+if an image is missing, it is shown again. "EmblemIcon Work:Music
 TO=AMIGA" makes it a normal icon again.
 
 Note that a default image covers the icon's own picture. To keep the
 picture and only add an emblem, leave out IMAGE= and IMAGESELECTED=.
 @ENDNODE
 
-@NODE TOOLTYPES "The tool types"
-@{b}The tool types@{ub}
+@NODE TOOLTYPES "The settings"
+@{b}The settings@{ub}
+
+Every Emblem icon can have four settings. They are kept in the icon file,
+apart from the tool types; @{"EmblemIcon" link EMBLEMICON} shows and changes them
+(SET="KEY=value", UNSET="KEY").
 
   IMAGE=Name[,Method]
   IMAGESELECTED=Name[,Method]
@@ -128,14 +128,15 @@ Rules:
    its emblem the emblem is left out.
  - Without EMBLEMSELECTED the selected image has no emblem.
  - The emblem is cut off at the image's edges.
- - Things you don't want right now can be switched off with brackets:
-   (EMBLEM=EmblemMusic,28,28,34,32)
+ - Icons made for Emblem 1.0 had these as tool types; they are ignored
+   now. Set them again with EmblemIcon (and remove the tool types with
+   UNSET, see @{"EmblemIcon" link EMBLEMICON}).
 @ENDNODE
 
 @NODE METHODS "Methods (effects)"
 @{b}Methods@{ub}
 
-The last field of a tool type chooses an effect for that layer (the
+The last field of a setting chooses an effect for that layer (the
 default image, or the emblem):
 
   SHADOW   a soft shadow under it, down and to the right
@@ -160,7 +161,7 @@ ENVARC:sys/emblem.prefs (and its copy ENV:sys/emblem.prefs, which is
 the one that is read) is a text file of KEY=value lines; lines starting
 with ; or # are comments.
 
-  METHOD=        method for tool types without one       (NONE)
+  METHOD=        method for settings without one         (NONE)
   IMAGEMETHOD=   ... only for IMAGE= and IMAGESELECTED=  (NONE)
   EMBLEMMETHOD=  ... only for EMBLEM= and EMBLEMSELECTED= (NONE)
                  IMAGEMETHOD and EMBLEMMETHOD win over METHOD.
@@ -192,8 +193,8 @@ colour with alpha is best, palette and gray ones are fine too).
 
  - Default images: up to 256x256 pixels. Workbench icons of AmigaOS 4.1
    are mostly 64x64, so the sample images are 64x64.
- - Emblems: up to 1024x1024; they are scaled to the size in the tool
-   type (up to 512x512). The sample emblems are 32x32.
+ - Emblems: up to 1024x1024; they are scaled to the size in the
+   setting (up to 512x512). The sample emblems are 32x32.
  - The normal and the selected image should have the same size.
 
 Changed or new images are noticed within two seconds and show on the next
@@ -225,9 +226,10 @@ Good emblems have a dark rim, so they read on any image and background.
   EmblemIcon FILES/M/A,TO/K,ALL/S,TYPE/K,SET/K,UNSET/K,QUIET/S
 
 Turns icons into the Emblem format and back, shows what they are, and
-sets or removes tool types, one icon or whole drawer trees at a time.
+sets or removes their settings and tool types, one icon or whole drawer
+trees at a time.
 
-  EmblemIcon Work:Music                 format and tool types
+  EmblemIcon Work:Music                 format, tool types, settings
   EmblemIcon Work:Music TO=EMBLEM       to the Emblem format
   EmblemIcon Work:Music TO=AMIGA        back to a normal icon
   EmblemIcon Work:#? TO=EMBLEM          every icon in Work:
@@ -238,25 +240,34 @@ sets or removes tool types, one icon or whole drawer trees at a time.
 Every drawer in Work: on the default drawer image, with its own picture
 as the emblem (see @{"INTERNAL" link TOOLTYPES}), in one go:
 
-  EmblemIcon Work: ALL TYPE=DRAWER TO=EMBLEM
+  EmblemIcon Work: ALL TYPE=DRAWER
      SET="IMAGE=DrawerNS|IMAGESELECTED=DrawerS|EMBLEM=INTERNAL,30,30,33,30"
 
-(one line). And all of them back, without those tool types:
+(one line). No emblem on them any more:
 
-  EmblemIcon Work: ALL TO=AMIGA UNSET="IMAGE|IMAGESELECTED|EMBLEM"
+  EmblemIcon Work: ALL UNSET="EMBLEM"
+
+And all of them back to normal icons (the settings go with it):
+
+  EmblemIcon Work: ALL TO=AMIGA
 
 FILES   icons, with or without ".info"; patterns work.
 TO      EMBLEM or AMIGA. Without TO the icons are shown (or, with SET or
-        UNSET, changed in the format they have).
+        UNSET, changed in the format they have). TO=AMIGA drops the
+        settings: normal icons can't keep them.
 ALL     also look in the drawers below (links are not followed).
 TYPE    only icons of these types: DISK, DRAWER, TOOL, PROJECT, GARBAGE,
         DEVICE, KICK; several separated by commas (TYPE=DRAWER,DISK).
-SET     tool types to set, KEY=value, several separated by "|". A tool type
-        with that key (upper or lower case) is replaced where it is, other
-        ones with the same key are removed; a new key is added at the end.
-        Put the value in quotes: SET="IMAGE=DrawerNS".
-UNSET   keys of tool types to remove, separated by "|". Done before SET.
-QUIET   fewer messages; no tool types when showing.
+SET     what to set, KEY=value, several separated by "|". IMAGE,
+        IMAGESELECTED, EMBLEM and EMBLEMSELECTED are the icon's
+        @{"settings" link TOOLTYPES}, any other key a tool type. An entry with
+        that key (upper or lower case) is replaced where it is, other ones
+        with the same key are removed; a new key is added at the end.
+        Setting one of the four makes the icon an Emblem icon (as TO=EMBLEM
+        does). Put the value in quotes: SET="IMAGE=DrawerNS".
+UNSET   keys to remove (settings or tool types), separated by "|". Done
+        before SET.
+QUIET   fewer messages; no tool types or settings when showing.
 
 With a pattern or ALL, only Emblem icons are shown, changed with SET or
 UNSET, and converted back with TO=AMIGA; TO=EMBLEM converts the normal
@@ -264,7 +275,8 @@ icons (with SET or UNSET it changes the Emblem icons too). A count is
 printed at the end.
 
 The conversion keeps everything: the pictures, tool types, position,
-default tool, stack and drawer window. Every saved icon is loaded again and
+default tool, stack and drawer window (and back to a normal icon
+everything but the settings). Every saved icon is loaded again and
 checked. It needs the module to be running (installed, and the computer
 restarted).
 
@@ -276,7 +288,8 @@ arguments.
 @{b}The examples@{ub}
 
 The drawer Examples (next to this guide) has ten Emblem icons. Look at
-their tool types (@{i}Icons > Information...@{ui}) to see how each is made:
+their settings to see how each is made ("EmblemIcon Examples/#?" in a
+Shell in the documentation drawer):
 
   Music       an emblem without a method: the settings decide
   Pictures    SHADOW
@@ -289,7 +302,7 @@ their tool types (@{i}Icons > Information...@{ui}) to see how each is made:
   Tools       INTERNAL: the icon's own picture (a wrench) as the emblem
   ReadMe      no IMAGE=: the emblem goes on the icon's own picture
 
-Copy them, or their tool types, as you like.
+Copy them, or their settings, as you like.
 @ENDNODE
 
 @NODE NOTES "Good to know"
@@ -342,10 +355,29 @@ remove it (Remove does that when you let it).
    pictures, pass the tag EMBLEMA_NoCompose (TAG_USER + 0x454D0001) with
    TRUE; other modules ignore it.
  - ICONGETA_FileFormat tells whether an icon is an Emblem icon.
+ - The settings: EMBLEMA_GetSettings (TAG_USER + 0x454D0002, STRPTR **)
+   with GetIconTags() gets them as a NULL-terminated array of "KEY=value"
+   strings (NULL when there are none; freed with the icon);
+   EMBLEMA_SetSettings (TAG_USER + 0x454D0003, STRPTR *) with
+   PutIconTags() saves the icon with these instead (NULL or an empty
+   array: none). Without it an Emblem icon keeps its settings when it is
+   saved, also after DupDiskObject(). src/emblem.h of the source code
+   (github.com/orgin/emblemicon) has these definitions.
 @ENDNODE
 
 @NODE HISTORY "History"
 @{b}History@{ub}
+
+@{b}1.1 (not released yet)@{ub}
+ - The four settings are kept in the icon file, no longer in its tool
+   types: many programs (most Prefs editors) read all of their tool
+   types as arguments and refused to start. Icons of 1.0 need their
+   settings set again (EmblemIcon SET=).
+ - emblem.iconmodule 1.1: the settings, EMBLEMA_GetSettings and
+   EMBLEMA_SetSettings.
+ - EmblemIcon 1.2: SET, UNSET and TYPE (settings and tool types, whole
+   drawer trees); shows the settings.
+ - A small sample set and RemoveSamples.
 
 @{b}1.0 (15.11.2026)@{ub}
  - First release: emblem.iconmodule 1.0 and EmblemIcon 1.0, sample art,

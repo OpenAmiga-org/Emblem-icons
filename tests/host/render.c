@@ -3,13 +3,14 @@
  * (same PNG decoder, same integer composition), for golden renders and for
  * the expected pixels of the guest tests.
  *
- *   render [--dir DIR] [--own1 FILE] [--own2 FILE] [--prefs FILE] [--out PREFIX] TOOLTYPE...
+ *   render [--dir DIR] [--own1 FILE] [--own2 FILE] [--prefs FILE] [--out PREFIX] SETTING...
  *
  * --dir    folder of the default images and emblems (Name -> DIR/Name.png)
  * --own1/2 the icon's own normal/selected image: .argb (u32 w, u32 h, A,R,G,B
  *          bytes; what "icontest pixels" writes) or .png
- * --prefs  settings file (emblem.prefs); default: the built-in settings
- * --ttfile tool types from a file, one per line (before the TOOLTYPE arguments)
+ * --prefs  global settings file (emblem.prefs); default: the built-in ones
+ * --ttfile settings from a file, one per line (before the SETTING arguments; other
+ *          lines are ignored, as icontest ttfile makes them tool types)
  * --out    write PREFIX_1.png and PREFIX_2.png
  * Prints "composed=1 size=WxH img1=CRC img2=CRC" or "composed=0".
  */

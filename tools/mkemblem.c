@@ -4,7 +4,10 @@
  *
  *   mkemblem OUT.info TYPE=DRAWER|PROJECT|TOOL|DISK|GARBAGE IMAGE=normal.png
  *            [SELECTED=selected.png] [TOOL=default tool] [STACK=n] [POS=x,y]
- *            [WINDOW=x,y,w,h] [TT=tool type]...
+ *            [WINDOW=x,y,w,h] [TT=tool type]... [ES=setting]...
+ *
+ * ES= are the icon's Emblem settings (IMAGE=..., EMBLEM=..., the ESET chunk);
+ * TT= refuses those four keys, so they can't end up in the tool types.
  *
  * The icon's own images are the PNGs (32-bit ARGB). No planar fallback is
  * stored: the module builds one when it loads the icon.
@@ -12,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <zlib.h>
 
 #include "../src/emblemfile.h"
@@ -74,13 +78,13 @@ static void load_png(const char *path, EFImage *img)
 int main(int argc, char **argv)
 {
 	EFIcon ic;
-	char tts[8192];
-	uint32_t ttlen = 0, len;
+	char tts[8192], ess[8192];
+	uint32_t ttlen = 0, eslen = 0, len;
 	uint8_t *out;
 	FILE *f;
 	int i;
 
-	if (argc < 3) die("usage: mkemblem OUT.info TYPE=... IMAGE=file.png [SELECTED=] [TOOL=] [STACK=] [POS=x,y] [WINDOW=x,y,w,h] [TT=]...", NULL);
+	if (argc < 3) die("usage: mkemblem OUT.info TYPE=... IMAGE=file.png [SELECTED=] [TOOL=] [STACK=] [POS=x,y] [WINDOW=x,y,w,h] [TT=]... [ES=]...", NULL);
 	memset(&ic, 0, sizeof(ic));
 	ic.type = 0;
 	ic.frameless = 1;
@@ -109,12 +113,20 @@ int main(int argc, char **argv)
 			ic.hasdrawer = 1;
 			ic.dleft = (int16_t)x; ic.dtop = (int16_t)y; ic.dwidth = (int16_t)w; ic.dheight = (int16_t)h;
 		}
-		else if (!strncmp(a, "TT=", 3))
+		else if (!strncmp(a, "TT=", 3) || !strncmp(a, "ES=", 3))
 		{
-			size_t n = strlen(a + 3) + 1;
-			if (ttlen + n > sizeof(tts)) die("too many tool types", NULL);
-			memcpy(tts + ttlen, a + 3, n);
-			ttlen += (uint32_t)n;
+			int es = a[0] == 'E';
+			size_t n = strlen(a + 3) + 1, k = strcspn(a + 3, "=");
+			static const char *const keys[] = { "IMAGE", "IMAGESELECTED", "EMBLEM", "EMBLEMSELECTED" };
+			int setting = 0;
+			for (int j = 0; j < 4; j++)
+				if (k == strlen(keys[j]) && !strncasecmp(a + 3, keys[j], k)) setting = 1;
+			if (!es && setting) die("an Emblem setting is not a tool type, use ES=: ", a);
+			if (es && (!setting || !a[3 + k])) die("ES= takes IMAGE=, IMAGESELECTED=, EMBLEM= or EMBLEMSELECTED=: ", a);
+			if ((es ? eslen : ttlen) + n > sizeof(tts)) die("too many tool types or settings", NULL);
+			memcpy((es ? ess + eslen : tts + ttlen), a + 3, n);
+			if (es) eslen += (uint32_t)n;
+			else ttlen += (uint32_t)n;
 		}
 		else die("unknown argument ", a);
 	}
@@ -126,6 +138,11 @@ int main(int argc, char **argv)
 	{
 		ic.tooltypes = tts;
 		ic.tooltypeslen = ttlen;
+	}
+	if (eslen)
+	{
+		ic.settings = ess;
+		ic.settingslen = eslen;
 	}
 	ic.gwidth = ic.img[0].width;
 	ic.gheight = ic.img[0].height;

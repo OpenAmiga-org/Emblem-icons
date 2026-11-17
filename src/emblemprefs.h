@@ -4,7 +4,7 @@
  * lines starting with '#' or ';' are comments, unknown keys and bad values
  * are ignored (the setting keeps its default):
  *
- *   METHOD=SHADOW          method for tool types without one (images and emblems)
+ *   METHOD=SHADOW          method for settings without one (images and emblems)
  *   IMAGEMETHOD=NONE       ... only for IMAGE=/IMAGESELECTED= (wins over METHOD)
  *   EMBLEMMETHOD=SHADOW    ... only for EMBLEM=/EMBLEMSELECTED= (wins over METHOD)
  *   SHADOWOFFSET=5,5       -16..16 (one number = both)

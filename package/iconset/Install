@@ -8,7 +8,8 @@
 ; Remove: @BACKUP@/Restore puts the saved icons back, exactly;
 ; then the images are deleted.
 ;
-; Needs the Emblem icon module running and C:EmblemIcon 1.1 or newer.
+; Needs Emblem 1.1 or newer running: emblem.iconmodule 1.1 and C:EmblemIcon 1.2
+; (they keep the settings in the icon file, not in the tool types).
 ; Public domain.
 
 (set #app "@NAME@")
@@ -79,10 +80,10 @@
 ; --- requirements: without them nothing is changed --------------------------
 
 (set #missing "")
-(if (< (getversion "emblem.iconmodule" (resident)) 65536)
-  (set #missing (cat #missing "\n- the Emblem icon module, running (install Emblem, then restart the computer)")))
-(if (< (getversion "C:EmblemIcon") 65537)
-  (set #missing (cat #missing "\n- C:EmblemIcon 1.1 or newer (it comes with Emblem)")))
+(if (< (getversion "emblem.iconmodule" (resident)) 65537)
+  (set #missing (cat #missing "\n- the Emblem icon module 1.1 or newer, running (install Emblem, then restart the computer)")))
+(if (< (getversion "C:EmblemIcon") 65538)
+  (set #missing (cat #missing "\n- C:EmblemIcon 1.2 or newer (it comes with Emblem)")))
 (if (not (exists "C:MD5Sum"))
   (set #missing (cat #missing "\n- C:MD5Sum (part of AmigaOS 4.1 Final Edition)")))
 (if (<> #missing "")
@@ -150,7 +151,7 @@
 ; --- 4. the emblems' shadow -----------------------------------------------------
 
 ; The set was drawn with a shorter, softer emblem shadow than Emblem's own
-; default; its tool types say SHADOW. emblem.prefs was saved in step 1.
+; default; its icons' settings say SHADOW. emblem.prefs was saved in step 1.
 (set #shadow 1)
 (if (= #test "")
   (set #shadow

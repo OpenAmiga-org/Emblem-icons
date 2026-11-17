@@ -12,7 +12,7 @@ The glass icon set as a package: which stock icon gets which image, selected ima
   icons     build/iconset/icons/: the pictures of the package's own (native) icons as ARGB + a
             mkicons.script; run it in the guest with mkicon (see package/icons/README.md) and copy
             out/*.info to package/iconset/icons/
-  package   export + the set's archive dist/<NAME>.lha (stage build/stage-iconset): Install
+  package   export + the set's archive dist/<ARCHIVE>.lha (emblem_icons_glenz.lha) (stage build/stage-iconset): Install
             (package/iconset/Install with the names filled in), Images/<SET>/, Scripts/Backup and
             Scripts/Convert (generated from the mapping), Scripts/Verify, Scripts/Restore.body,
             Icons/Restore.info (docs/iconset_plan.md "The icon set's installer")
@@ -32,9 +32,10 @@ import glass_symbols as gs  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 G = os.path.join(ROOT, "build", "glass")
-SET = os.environ.get("ICONSET", "glass")          # working name (the user names the set later)
-NAME = "GlassIcons"                                # the package drawer and archive (working name)
-BACKUP = "SYS:GlassIconsBackup"                    # where the set's Install saves the icons it changes
+SET = os.environ.get("ICONSET", "glenz")          # the set's images: ENVARC:sys/emblem/<SET>/ (user, 2026-11-17)
+NAME = "Glenz"                                     # the set's name: package drawer, Install, Restore
+ARCHIVE = "emblem_icons_glenz"                     # dist/<ARCHIVE>.lha
+BACKUP = "SYS:GlenzBackup"                         # where the set's Install saves the icons it changes
 AT = "0,0,36,35"                                  # emblems: their own size (28x28), lower right
 LISTING = os.path.join(ROOT, "build", "work", "inventory_full.txt")
 
@@ -171,8 +172,17 @@ LEFT_ALONE = {"def_iconify", "def_window", "def_docky", "def_extras_dock", "def_
               "icon_noaccess", "icon_nodrop", "update.prefs"}
 
 
+# whole drawers left alone, decided by the user: (prefix, why)
+LEFT_ALONE_DRAWERS = [
+    ("SYS:Emulation/", "everything below SYS:Emulation (the classic Workbench 3.1 disk, the ROMs; user "
+                       "2026-11-17: only the two drawer icons in SYS:Emulation get the set)"),
+]
+
+
 def left_alone(path):
     n = path.split("/")[-1]
+    if any(path.lower().startswith(p.lower()) for p, _ in LEFT_ALONE_DRAWERS):
+        return True
     return path.lower().startswith("envarc:sys/") and (n.endswith("pointer") or n in LEFT_ALONE)
 
 
@@ -194,8 +204,36 @@ def listing():
     return icons
 
 
+LEFT_COUNT = {}   # icons left alone per LEFT_ALONE_DRAWERS entry (filled by check())
+
+# The user's decisions on the stock icons not mapped yet, per drawer (2026-11-17; the IDs of that
+# review): "do" = to be made later, "dont" = left alone for good, "later" = set aside for now.
+GAP_DECISIONS = {
+    "do":    ["SYS:", "SYS:Prefs/Presets", "SYS:System/AmiUpdate", "SYS:System/Python",
+              "SYS:Utilities/AmiGS", "SYS:Utilities/AmiPDF", "SYS:Utilities/Commodities", "SYS:Utilities/SGrab"],
+    "dont":  ["SYS:Documentation", "SYS:Documentation/AmiSSL", "SYS:Documentation/MiniGL/demos",
+              "SYS:Documentation/SFTPHandler", "SYS:Prefs"],
+    "later": ["SYS:Devs/DataTypes", "SYS:Devs/DOSDrivers", "SYS:Devs/Monitors", "SYS:Devs/Printers", "SYS:MUI",
+              "SYS:MUI/Demos", "SYS:MUI/Docs", "SYS:MUI/Docs/Deutsch", "SYS:MUI/Docs/English",
+              "SYS:MUI/Docs/Italiano", "SYS:MUI/Icons", "SYS:MUI/Rexx", "SYS:Prefs/Presets/AmiDock",
+              "SYS:Prefs/Presets/Default", "SYS:Prefs/Presets/SilverGreen", "SYS:Storage/DOSDrivers",
+              "SYS:Storage/Monitors", "SYS:Storage/NetInterfaces", "SYS:Storage/Printers", "SYS:Utilities/Blankers",
+              "SYS:Utilities/Dockies"],
+}
+GAP_TITLES = {"do": "To do (decided, not made yet)", "dont": "Not needed (left alone)",
+              "later": "Set aside for now", None: "Still to decide"}
+
+
+def gap_decision(drawer):
+    for k, ds in GAP_DECISIONS.items():
+        if any(drawer.lower() == d.lower() for d in ds):
+            return k
+    return None
+
+
 def check():
     icons = listing()
+    LEFT_COUNT.clear()
     bad = 0
     seen = set()
     for path, base, em in MAPPING:
@@ -223,20 +261,30 @@ def check():
             print("NO EMBLEM", em)
             bad += 1
     gaps = collections.defaultdict(list)
+    LEFT_COUNT["noparent"] = 0
     for key, (base, kind) in icons.items():
+        parent = base.rsplit("/", 1)[0] if "/" in base else base.split(":")[0] + ":"
+        if key not in seen and not left_alone(base) and not key.startswith("sys:prefs/env-archive/") and \
+                (parent + "Disk" if parent.endswith(":") else parent).lower() not in icons:
+            LEFT_COUNT["noparent"] += 1   # its drawer has no icon (user 2026-11-17): left alone
+            continue
         if key in seen or left_alone(base) or key.startswith("sys:prefs/env-archive/"):
+            if key not in seen and left_alone(base):
+                for p, _ in LEFT_ALONE_DRAWERS:
+                    if key.startswith(p.lower()):
+                        LEFT_COUNT[p] = LEFT_COUNT.get(p, 0) + 1
             continue
         d = base.rsplit("/", 1)[0] if "/" in base else base.split(":")[0] + ":"
         gaps[d].append((base.split("/")[-1], kind))
     return bad, seen, gaps
 
 
-def tooltypes(base, em):
+def settings(base, em):
     """SHADOW on the emblems: the set was drawn with it, whatever EMBLEMMETHOD the user has"""
-    tt = [f"IMAGE={SET}/{base}", f"IMAGESELECTED={SET}/{base}_sel"]
+    es = [f"IMAGE={SET}/{base}", f"IMAGESELECTED={SET}/{base}_sel"]
     if em:
-        tt += [f"EMBLEM={SET}/{em},{AT},SHADOW", f"EMBLEMSELECTED={SET}/{em},{AT},SHADOW"]
-    return tt
+        es += [f"EMBLEM={SET}/{em},{AT},SHADOW", f"EMBLEMSELECTED={SET}/{em},{AT},SHADOW"]
+    return es
 
 
 def export(out):
@@ -254,7 +302,7 @@ def export(out):
         bloom(Image.open(f).convert("RGBA"), None, th).resize((28, 28), Image.LANCZOS).save(os.path.join(img, e + ".png"))
     with open(os.path.join(out, "mapping.txt"), "w") as fh:
         for path, b, e in MAPPING:
-            fh.write(path + ".info|" + "|".join(tooltypes(b, e)) + "\n")
+            fh.write(path + ".info|" + "|".join(settings(b, e)) + "\n")
     print(f"{len(used)} bases (x2), {len(ems)} emblems -> {img}; {len(MAPPING)} icons -> mapping.txt")
 
 
@@ -317,7 +365,7 @@ def script_convert():
         root, rel = split(path + ".info")
         L += [f'If EXISTS "{path}.info"',
               f'  If EXISTS "{{B}}/files/{root}/{rel}"',
-              f'    C:EmblemIcon >NIL: "{path}.info" TO=EMBLEM SET="{"|".join(tooltypes(b, e))}" QUIET',
+              f'    C:EmblemIcon >NIL: "{path}.info" TO=EMBLEM SET="{"|".join(settings(b, e))}" QUIET',
               "    If WARN",
               f'      Echo "Not changed: {path}.info"',
               "      Set failed `Eval $failed + 1`",
@@ -411,7 +459,7 @@ def package():
     shutil.copy(os.path.join(ic, NAME + ".info"), os.path.join(stage, NAME + ".info"))
     shutil.copy(os.path.join(ic, "Install.info"), os.path.join(d, "Install.info"))
     shutil.copy(os.path.join(ic, "Restore.info"), os.path.join(d, "Icons", "Restore.info"))
-    out = os.path.join(ROOT, "dist", NAME + ".lha")
+    out = os.path.join(ROOT, "dist", ARCHIVE + ".lha")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     if os.path.exists(out):
         os.remove(out)
@@ -423,23 +471,37 @@ def package():
 def doc(gaps):
     lines = [f"# The icon set's mapping (working name \"{SET}\")", "",
              "Generated by tools/iconset_build.py from the decisions in docs/iconset_plan.md, checked against a",
-             "full listing of the OS 4.1 guest. Every icon here becomes an Emblem icon with these tool types",
+             "full listing of the OS 4.1 guest. Every icon here becomes an Emblem icon with these settings",
              f"(images in ENVARC:sys/emblem/{SET}/; IMAGESELECTED is the base name + \"_sel\").", "",
              f"{len(MAPPING)} icons.", "", "| Icon | Image | Emblem |", "|---|---|---|"]
     for path, b, e in MAPPING:
         lines.append(f"| {path}.info | {b} | {e or ''} |")
     lines += ["", "## Not mapped (the stock icon stays)", "",
-              "Left alone on purpose: the mouse pointers, frames, overlays and dock/window icons in ENVARC:Sys.",
-              "Every other stock icon not in the table, by drawer (to decide; kind: file / drawer / icon only):", ""]
-    for d in sorted(gaps):
-        items = sorted(gaps[d])
-        lines.append(f"- **{d}** ({len(items)}): " + ", ".join(f"{n}" + ("" if k == "file" else f" ({k})") for n, k in items))
+              "Left alone on purpose: the mouse pointers, frames, overlays and dock/window icons in ENVARC:Sys;"]
+    lines += [f"{why} ({LEFT_COUNT.get(p, 0)} icons)." if i == len(LEFT_ALONE_DRAWERS) - 1 else f"{why} ({LEFT_COUNT.get(p, 0)} icons);"
+              for i, (p, why) in enumerate(LEFT_ALONE_DRAWERS)]
+    lines += [f"Icons in a drawer that has no icon itself (user 2026-11-17) ({LEFT_COUNT.get('noparent', 0)} icons).",
+              "", "Every other stock icon not in the table, by drawer and the user's decision (2026-11-17; kind:",
+              "file / drawer / icon only):"]
+    for dec in ("do", "dont", "later", None):
+        ds = [d for d in sorted(gaps, key=str.lower) if gap_decision(d) == dec]
+        if not ds:
+            continue
+        lines += ["", f"### {GAP_TITLES[dec]} ({sum(len(gaps[d]) for d in ds)} icons)", ""]
+        for d in ds:
+            items = sorted(gaps[d])
+            lines.append(f"- **{d}** ({len(items)}): " + ", ".join(f"{n}" + ("" if k == "file" else f" ({k})")
+                                                                    for n, k in items))
     open(os.path.join(ROOT, "docs", "iconset_mapping.md"), "w").write("\n".join(lines) + "\n")
 
 
 def main():
     bad, seen, gaps = check()
-    print(f"{len(MAPPING)} icons mapped, {sum(len(v) for v in gaps.values())} stock icons not mapped in {len(gaps)} drawers,"
+    per = collections.Counter()
+    for d, v in gaps.items():
+        per[gap_decision(d)] += len(v)
+    print(f"{len(MAPPING)} icons mapped, {sum(len(v) for v in gaps.values())} stock icons not mapped in {len(gaps)} drawers"
+          f" (to do {per['do']}, not needed {per['dont']}, set aside {per['later']}, undecided {per[None]}),"
           f" {bad} problems")
     doc(gaps)
     cmd = sys.argv[1] if len(sys.argv) > 1 else "check"

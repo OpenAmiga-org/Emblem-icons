@@ -2,8 +2,9 @@
 
 An Emblem icon is a `.info` file that `emblem.iconmodule` reads and writes. It carries everything a
 `struct DiskObject` holds plus the icon's own images, so converting back to a native Amiga icon loses
-nothing. The emblem/default image tool types are ordinary tool types; the module composes the
-displayed images when it loads the icon (from step 3 of the plan on).
+nothing. The icon's Emblem settings (default images and emblems: `IMAGE=`, `IMAGESELECTED=`,
+`EMBLEM=`, `EMBLEMSELECTED=`) are kept in their own chunk, `ESET`, not in the tool types; the
+module composes the displayed images from them when it loads the icon.
 
 The file is an IFF FORM (big-endian, chunks padded to even length):
 
@@ -13,6 +14,7 @@ FORM <size> EMBL
   DRAW   drawer data (only for icons that have it)
   DEFT   default tool
   TTYP   tool types
+  ESET   the Emblem settings (module 1.1 and newer)
   TWIN   tool window
   IMAG   one per stored image (normal, selected)
   ....   unknown chunks: kept as they are when the module saves the icon
@@ -60,6 +62,19 @@ The string bytes, no terminating NUL (the chunk length is the string length).
 ## TTYP
 
 Each tool type as a NUL-terminated string, one after the other. An empty chunk = no tool types.
+
+## ESET
+
+The icon's Emblem settings, packed like the tool types: each a NUL-terminated `KEY=value` string.
+The module reads `IMAGE=Name[,Method]`, `IMAGESELECTED=`, `EMBLEM=Name[,W,H,X,Y,Method]` and
+`EMBLEMSELECTED=` (src/emblemspec.h; the first of a key counts) and keeps every string, also others,
+when it saves the icon. No chunk (or an empty one) = no settings.
+
+They are not tool types because many programs read all of their icon's tool types as arguments
+(`ReadArgs()` with the template of their command line): most OS 4 Prefs editors refuse to start when
+an icon has a tool type their template doesn't know. Programs read and change the settings with the
+`EMBLEMA_GetSettings` and `EMBLEMA_SetSettings` tags (src/emblem.h); `C:EmblemIcon SET=` and `UNSET=`
+do it from the shell. Module 1.0 doesn't know this chunk: it kept it as an unknown chunk.
 
 ## IMAG
 

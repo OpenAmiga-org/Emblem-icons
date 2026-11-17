@@ -4,29 +4,33 @@
  *
  *   EmblemIcon FILES/M/A,TO/K,ALL/S,TYPE/K,SET/K,UNSET/K,QUIET/S
  *
- *   EmblemIcon Work:Prefs                  show format and tool types
+ *   EmblemIcon Work:Prefs                  show format, tool types, settings
  *   EmblemIcon Work:Prefs TO=EMBLEM        convert to the Emblem format
  *   EmblemIcon Work:Prefs TO=AMIGA         convert back to a native icon
  *   EmblemIcon Work:#? TO=EMBLEM           every icon in Work:
  *   EmblemIcon Work: ALL TO=AMIGA          every Emblem icon in Work: and
  *                                          all drawers below, back to native
- *   EmblemIcon Work: ALL TYPE=DRAWER TO=EMBLEM SET="IMAGE=Drawer|EMBLEM=INTERNAL,30,30,33,30"
+ *   EmblemIcon Work: ALL TYPE=DRAWER SET="IMAGE=Drawer|EMBLEM=INTERNAL,30,30,33,30"
  *                                          every drawer icon: Emblem, with
- *                                          these tool types
- *   EmblemIcon Work: ALL TO=AMIGA UNSET="IMAGE|EMBLEM"
- *                                          back, without those tool types
+ *                                          these settings
+ *   EmblemIcon Work: ALL UNSET="EMBLEM"    no emblem on any Emblem icon
  *
  * Names may be given with or without ".info" and may be patterns. ALL goes
  * into drawers (not into links). In ALL and pattern runs, icons that already
  * have the wanted format are skipped quietly and only Emblem icons are shown
  * (without TO); a count is printed at the end.
  *
- * SET sets tool types ("KEY=value", several separated by '|'): the first one
+ * SET sets entries ("KEY=value", several separated by '|'): the first one
  * with that key (case ignored, like FindToolType()) is replaced and later ones
  * with the same key removed; a new key is added at the end. UNSET removes all
- * tool types with the given keys (separated by '|'); it is done before SET.
- * With SET or UNSET, Emblem icons are changed too in TO=EMBLEM runs, and
- * without TO only Emblem icons are changed in ALL and pattern runs. TYPE
+ * entries with the given keys (separated by '|'); it is done before SET.
+ * The keys IMAGE, IMAGESELECTED, EMBLEM and EMBLEMSELECTED are the icon's
+ * Emblem settings, kept in the Emblem file (EMBLEMA_GetSettings and
+ * EMBLEMA_SetSettings, src/emblem.h), not in its tool types; every other key
+ * is a tool type. Setting one of the four makes the icon an Emblem icon (SET
+ * with them means TO=EMBLEM; TO=AMIGA drops the settings and can't take
+ * them). With SET or UNSET, Emblem icons are changed too in TO=EMBLEM runs,
+ * and without TO only Emblem icons are changed in ALL and pattern runs. TYPE
  * (DISK, DRAWER, TOOL, PROJECT, GARBAGE, DEVICE, KICK; several separated by
  * commas) limits everything to icons of those types.
  *
@@ -58,8 +62,12 @@ static BOOL quiet, all;
 static BOOL many;            /* a pattern or ALL run */
 static BOOL stopped;
 static uint32 nfound, nconverted, nchanged, nfailed;
-static STRPTR sets[MAXTT], unsets[MAXTT];
+static STRPTR sets[MAXTT], unsets[MAXTT];      /* SET=, UNSET= as given */
 static int nsets, nunsets;
+static STRPTR ttsets[MAXTT], ttunsets[MAXTT];  /* the tool type entries */
+static int nttsets, nttunsets;
+static STRPTR essets[MAXTT], esunsets[MAXTT];  /* the Emblem settings */
+static int nessets, nesunsets;
 static uint32 types;         /* TYPE=: bit n = do_Type n; 0 = all */
 
 static const char *const typenames[] = { NULL, "DISK", "DRAWER", "TOOL", "PROJECT", "GARBAGE", "DEVICE", "KICK" };
@@ -75,6 +83,35 @@ static BOOL same_key(CONST_STRPTR a, CONST_STRPTR b)
 {
 	size_t n = keylen(a);
 	return n == keylen(b) && Strnicmp(a, b, n) == 0;
+}
+
+/* one of the four keys kept in the Emblem file instead of the tool types */
+static BOOL is_setting(CONST_STRPTR s)
+{
+	static const char *const keys[] = { "IMAGE", "IMAGESELECTED", "EMBLEM", "EMBLEMSELECTED" };
+	size_t n = keylen(s);
+	for (int i = 0; i < 4; i++)
+		if (n == strlen(keys[i]) && Strnicmp(s, keys[i], n) == 0) return TRUE;
+	return FALSE;
+}
+
+/* the value of the first entry with key's key, or NULL */
+static STRPTR find_key(STRPTR *a, CONST_STRPTR key)
+{
+	for (; a && *a; a++)
+		if (same_key(*a, key))
+		{
+			size_t n = keylen(*a);
+			return (*a)[n] ? *a + n + 1 : *a + n;
+		}
+	return NULL;
+}
+
+static uint32 count(STRPTR *a)
+{
+	uint32 n = 0;
+	while (a && a[n]) n++;
+	return n;
 }
 
 /* Split a '|' separated list (in place, the string stays alive) into out[];
@@ -99,33 +136,34 @@ static int split(STRPTR s, STRPTR *out)
 	return n;
 }
 
-/* The icon's tool types with UNSET and SET applied: a new NULL-terminated
- * array (FreeVec it) of pointers into the old strings and sets[]; *changed
- * tells whether it differs from the old one. NULL if out of memory. */
-static STRPTR *new_tooltypes(STRPTR *old, BOOL *changed)
+/* A list (tool types or settings) with unset[] and set[] applied: a new
+ * NULL-terminated array (FreeVec it) of pointers into the old strings and
+ * set[]; *changed tells whether it differs from the old one. NULL if out of
+ * memory. */
+static STRPTR *new_list(STRPTR *old, STRPTR *set, int nset, STRPTR *unset, int nunset, BOOL *changed)
 {
 	int n = 0, k = 0, i, j;
 	STRPTR *tt;
 	for (STRPTR *p = old; p && *p; p++) n++;
-	if (!(tt = AllocVecTags((n + nsets + 1) * sizeof(STRPTR), AVT_ClearWithValue, 0, TAG_DONE)))
+	if (!(tt = AllocVecTags((n + nset + 1) * sizeof(STRPTR), AVT_ClearWithValue, 0, TAG_DONE)))
 		return NULL;
 	for (i = 0; i < n; i++)
 	{
 		BOOL drop = FALSE;
-		for (j = 0; j < nunsets && !drop; j++)
-			drop = same_key(old[i], unsets[j]);
+		for (j = 0; j < nunset && !drop; j++)
+			drop = same_key(old[i], unset[j]);
 		if (!drop) tt[k++] = old[i];
 	}
-	for (j = 0; j < nsets; j++)
+	for (j = 0; j < nset; j++)
 	{
 		int first = -1;
 		for (i = 0; i < k; i++)
 		{
-			if (!same_key(tt[i], sets[j])) continue;
+			if (!same_key(tt[i], set[j])) continue;
 			if (first < 0)
 			{
 				first = i;
-				tt[i] = sets[j];
+				tt[i] = set[j];
 			}
 			else
 			{
@@ -134,7 +172,7 @@ static STRPTR *new_tooltypes(STRPTR *old, BOOL *changed)
 				i--;
 			}
 		}
-		if (first < 0) tt[k++] = sets[j];
+		if (first < 0) tt[k++] = set[j];
 	}
 	tt[k] = NULL;
 	*changed = k != n;
@@ -148,10 +186,11 @@ static const char *fmtname(uint32 f)
 	return f == IDFMT_DIRECTMAPPED ? "ARGB" : f == IDFMT_PALETTEMAPPED ? "palette" : "planar";
 }
 
-static struct DiskObject *load(CONST_STRPTR name, STRPTR *fmt, int32 *err)
+static struct DiskObject *load(CONST_STRPTR name, STRPTR *fmt, int32 *err, STRPTR **es)
 {
 	*fmt = NULL;
 	*err = 0;
+	*es = NULL;
 	return GetIconTags(name,
 		ICONGETA_FailIfUnavailable, TRUE,
 		ICONGETA_RemapIcon,         FALSE,
@@ -159,6 +198,7 @@ static struct DiskObject *load(CONST_STRPTR name, STRPTR *fmt, int32 *err)
 		ICONGETA_FileFormat,        fmt,
 		ICONA_ErrorCode,            err,
 		EMBLEMA_NoCompose,          TRUE,   /* the icon's own images, never a default image */
+		EMBLEMA_GetSettings,        es,
 		TAG_DONE);
 }
 
@@ -179,7 +219,7 @@ static BOOL is_emblem_file(CONST_STRPTR info)
 static int do_file(CONST_STRPTR arg)
 {
 	char name[1024];
-	STRPTR fmt;
+	STRPTR fmt, *es;
 	int32 err;
 	struct DiskObject *dobj;
 	size_t len;
@@ -202,7 +242,7 @@ static int do_file(CONST_STRPTR arg)
 		if (!want) return 0;
 	}
 
-	if (!(dobj = load(name, &fmt, &err)))
+	if (!(dobj = load(name, &fmt, &err, &es)))
 	{
 		char msg[100];
 		Fault(err ? err : ERROR_OBJECT_NOT_FOUND, NULL, msg, sizeof(msg));
@@ -221,16 +261,24 @@ static int do_file(CONST_STRPTR arg)
 
 	if (!to && !edit)
 	{
-		uint32 w = 0, h = 0, f = IDFMT_BITMAPPED, n = 0;
+		uint32 w = 0, h = 0, f = IDFMT_BITMAPPED, n = count(dobj->do_ToolTypes), ns = count(es);
 		IconControl(dobj, ICONCTRLA_GetWidth, &w, ICONCTRLA_GetHeight, &h,
 			ICONCTRLA_GetImageDataFormat, &f, TAG_DONE);
-		for (STRPTR *tt = dobj->do_ToolTypes; tt && *tt; tt++) n++;
 		Printf("%s.info: %s format, %s image", name, fmt ? fmt : (STRPTR)"?", fmtname(f));
 		if (f != IDFMT_BITMAPPED) Printf(" %lux%lu", w, h);
-		Printf(", %lu tool type%s\n", n, n == 1 ? "" : "s");
-		if (!quiet)
-			for (STRPTR *tt = dobj->do_ToolTypes; tt && *tt; tt++)
-				Printf("  %s\n", *tt);
+		Printf(", %lu tool type%s", n, n == 1 ? "" : "s");
+		if (ns) Printf(", %lu setting%s", ns, ns == 1 ? "" : "s");
+		Printf("\n");
+		if (!quiet && n)
+		{
+			Printf("  Tool types:\n");
+			for (STRPTR *tt = dobj->do_ToolTypes; *tt; tt++) Printf("    %s\n", *tt);
+		}
+		if (!quiet && ns)
+		{
+			Printf("  Settings:\n");
+			for (STRPTR *s = es; *s; s++) Printf("    %s\n", *s);
+		}
 		FreeDiskObject(dobj);
 		return 0;
 	}
@@ -241,15 +289,19 @@ static int do_file(CONST_STRPTR arg)
 	else strlcpy(target, fmt ? (CONST_STRPTR)fmt : (CONST_STRPTR)"Amiga", sizeof(target));
 	BOOL convert = !fmt || Stricmp(fmt, target) != 0;
 
-	BOOL ttchanged = FALSE;
-	STRPTR *newtt = NULL, *oldtt = dobj->do_ToolTypes;
-	if (edit && !(newtt = new_tooltypes(oldtt, &ttchanged)))
+	BOOL toemblem = Stricmp(target, "Emblem") == 0;
+	BOOL ttchanged = FALSE, eschanged = FALSE;
+	STRPTR *newtt = NULL, *newes = NULL, *oldtt = dobj->do_ToolTypes;
+	if (((nttsets || nttunsets) && !(newtt = new_list(oldtt, ttsets, nttsets, ttunsets, nttunsets, &ttchanged)))
+		|| (toemblem && (nessets || nesunsets)
+			&& !(newes = new_list(es, essets, nessets, esunsets, nesunsets, &eschanged))))
 	{
 		Printf("Error: %s.info: out of memory\n", name);
+		FreeVec(newtt);
 		FreeDiskObject(dobj);
 		return 10;
 	}
-	if (!convert && !ttchanged)
+	if (!convert && !ttchanged && !eschanged)
 	{
 		if (!quiet && !many)
 		{
@@ -257,11 +309,11 @@ static int do_file(CONST_STRPTR arg)
 			else Printf("%s.info: already %s\n", name, fmt);
 		}
 		FreeVec(newtt);
+		FreeVec(newes);
 		FreeDiskObject(dobj);
 		return 0;
 	}
 
-	BOOL toemblem = Stricmp(target, "Emblem") == 0;
 	if (newtt) dobj->do_ToolTypes = newtt;
 	err = 0;
 	BOOL ok = PutIconTags(name, dobj,
@@ -269,9 +321,11 @@ static int do_file(CONST_STRPTR arg)
 		ICONPUTA_NoFallback,      TRUE,
 		ICONPUTA_NotifyWorkbench, TRUE,
 		ICONA_ErrorCode,          &err,
+		newes ? EMBLEMA_SetSettings : TAG_IGNORE, (uint32)newes,
 		TAG_DONE);
 	dobj->do_ToolTypes = oldtt;
 	FreeVec(newtt);
+	FreeVec(newes);
 	FreeDiskObject(dobj);
 	if (!ok)
 	{
@@ -283,7 +337,7 @@ static int do_file(CONST_STRPTR arg)
 	}
 
 	/* check what is on disk now */
-	if (!(dobj = load(name, &fmt, &err)))
+	if (!(dobj = load(name, &fmt, &err, &es)))
 	{
 		Printf("Error: %s.info: saved, but can't be loaded again\n", name);
 		return 10;
@@ -296,34 +350,39 @@ static int do_file(CONST_STRPTR arg)
 	}
 	for (int i = 0; i < nsets; i++)
 	{
-		char key[128];
-		size_t kl = keylen(sets[i]);
-		STRPTR v;
-		strlcpy(key, sets[i], kl + 1 < sizeof(key) ? kl + 1 : sizeof(key));
-		if (!(v = FindToolType(dobj->do_ToolTypes, key)) || strcmp(v, sets[i] + kl + 1) != 0)
+		BOOL setting = is_setting(sets[i]);
+		STRPTR v = find_key(setting ? es : dobj->do_ToolTypes, sets[i]);
+		if (!v || strcmp(v, sets[i] + keylen(sets[i]) + 1) != 0)
 		{
-			Printf("Error: %s.info: tool type %s not saved\n", name, key);
+			Printf("Error: %s.info: %s %s not saved\n", name, setting ? "setting" : "tool type", sets[i]);
 			FreeDiskObject(dobj);
 			return 10;
 		}
 	}
 	for (int i = 0; i < nunsets; i++)
-		for (STRPTR *p = dobj->do_ToolTypes; p && *p; p++)
-			if (same_key(*p, unsets[i]))
-			{
-				Printf("Error: %s.info: tool type %s not removed\n", name, unsets[i]);
-				FreeDiskObject(dobj);
-				return 10;
-			}
+		if (find_key(dobj->do_ToolTypes, unsets[i]) || find_key(es, unsets[i]))
+		{
+			Printf("Error: %s.info: %s not removed\n", name, unsets[i]);
+			FreeDiskObject(dobj);
+			return 10;
+		}
+	if (!toemblem && es)
+	{
+		Printf("Error: %s.info: the settings were not removed\n", name);
+		FreeDiskObject(dobj);
+		return 10;
+	}
 	if (!quiet)
 	{
-		if (convert && ttchanged) Printf("%s.info: converted to %s, tool types changed\n", name, fmt);
+		const char *what = ttchanged && eschanged ? "tool types and settings changed"
+			: ttchanged ? "tool types changed" : "settings changed";
+		if (convert && (ttchanged || eschanged)) Printf("%s.info: converted to %s, %s\n", name, fmt, what);
 		else if (convert) Printf("%s.info: converted to %s\n", name, fmt);
-		else Printf("%s.info: tool types changed\n", name);
+		else Printf("%s.info: %s\n", name, what);
 	}
 	FreeDiskObject(dobj);
 	if (convert) nconverted++;
-	if (ttchanged) nchanged++;
+	if (ttchanged || eschanged) nchanged++;
 	return 0;
 }
 
@@ -489,18 +548,34 @@ int main(void)
 		return 20;
 	}
 	for (int i = 0; i < nsets; i++)
+	{
 		if (keylen(sets[i]) == 0 || !strchr(sets[i], '='))
 		{
 			Printf("Error: SET entries must be KEY=value: %s\n", sets[i]);
 			FreeArgs(rda);
 			return 20;
 		}
+		if (is_setting(sets[i])) essets[nessets++] = sets[i];
+		else ttsets[nttsets++] = sets[i];
+	}
 	if (args[ARG_UNSET] && (nunsets = split((STRPTR)args[ARG_UNSET], unsets)) < 0)
 	{
 		Printf("Error: more than %ld UNSET entries\n", (int32)MAXTT);
 		FreeArgs(rda);
 		return 20;
 	}
+	for (int i = 0; i < nunsets; i++)
+	{
+		if (is_setting(unsets[i])) esunsets[nesunsets++] = unsets[i];
+		else ttunsets[nttunsets++] = unsets[i];
+	}
+	if (nessets && to && Stricmp(to, "AMIGA") == 0)
+	{
+		Printf("Error: IMAGE, IMAGESELECTED, EMBLEM and EMBLEMSELECTED are settings of Emblem icons, not with TO=AMIGA\n");
+		FreeArgs(rda);
+		return 20;
+	}
+	if (nessets && !to) to = "EMBLEM";   /* the settings need an Emblem icon */
 	if (args[ARG_TYPE])
 	{
 		STRPTR t = (STRPTR)args[ARG_TYPE];
@@ -535,7 +610,7 @@ int main(void)
 		else if (!nsets && !nunsets)
 			Printf("%lu Emblem icon%s", nfound, nfound == 1 ? "" : "s");
 		if (nsets || nunsets)
-			Printf("%s%lu with changed tool types", to ? ", " : "", nchanged);
+			Printf("%s%lu changed", to ? ", " : "", nchanged);
 		if (nfailed) Printf(", %lu failed", nfailed);
 		Printf("\n");
 	}
