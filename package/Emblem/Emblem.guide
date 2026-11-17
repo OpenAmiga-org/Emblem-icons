@@ -362,7 +362,7 @@ remove it (Remove does that when you let it).
    PutIconTags() saves the icon with these instead (NULL or an empty
    array: none). Without it an Emblem icon keeps its settings when it is
    saved, also after DupDiskObject(). src/emblem.h of the source code
-   (github.com/orgin/emblemicon) has these definitions.
+   (github.com/OpenAmiga-org/Emblem-icons) has these definitions.
 @ENDNODE
 
 @NODE HISTORY "History"

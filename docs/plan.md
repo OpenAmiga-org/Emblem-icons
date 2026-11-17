@@ -149,8 +149,8 @@ logging, guest reboot to reload modules (icon.library opens modules only at star
 ## 8. Decisions
 
 1. Route: **icon module with own file format** (user, 2026-11-15).
-2. Code: **GitHub repo orgin/emblemicon** (user, 2026-11-15), made **public** with release v1.0 (the
-   package Emblem.lha) on the user's request the same day; nothing in openamiga SVN.
+2. Code: **GitHub repo orgin/emblemicon** (user, 2026-11-15; moved to OpenAmiga-org/Emblem-icons by the user 2026-11-17), made **public** with release v1.0 (the
+   package Emblem.lha) on the user's request the same day; in openamiga SVN projects/34 since r1231 (2026-11-17).
 3. Names: **emblem.iconmodule, format "Emblem", EmblemIcon** kept (user, 2026-11-15); the package is
    called Emblem.
 4. Artwork: **placeholders drawn by a script** (user, 2026-11-15): tools/make_art.py, public domain.
