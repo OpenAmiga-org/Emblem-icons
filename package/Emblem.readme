@@ -1,69 +1,104 @@
-name: Emblem
-description: Icons with default images and emblems (icon module)
+name: emblem_icons
+description: Icon module: default images and emblems
 version: @VERSION@
 date: @DATE@
 author: Björn Hagström
 submitter: Björn Hagström
 email:
-url:
+url: http://openamiga.org/?function=gitproject&name=Emblem-icons
 category: utility/workbench
 replaces:
 requirements: AmigaOS 4.1 (icon.library 51.15+), z.library 53
 license: Public domain
 minosversion: 4.1
-texttype: Plain text
+texttype: Markdown
 distribute: yes
 hend:
+
+# Emblem @VERSION@ - icons with default images and emblems
 
 Emblem lets an icon borrow a shared default image (a drawer, a page) and
 put an emblem on it: a small picture that says what is inside, like a
 note for music or a globe for internet things. The emblem can get a soft
 shadow or a glow, or be grayed, darkened or brightened.
 
-It is an icon module for icon.library (LIBS:IconModules), so Workbench,
+It is an icon module for icon.library (`LIBS:IconModules`), so Workbench,
 file managers and every other program that shows icons show the result.
-Change one image in ENVARC:sys/emblem and every icon that uses it
+Change one image in `ENVARC:sys/emblem` and every icon that uses it
 changes with it. No patches.
 
-Four settings do it, kept in the icon file (not in its tool types, so
-programs that read their tool types as arguments never see them):
+Emblem is an [OpenAmiga.org project](http://openamiga.org/?function=gitproject&name=Emblem-icons).
+The source code, test versions and bug reports are at
+<https://github.com/OpenAmiga-org/Emblem-icons>.
 
-  IMAGE=DrawerNS
-  IMAGESELECTED=DrawerS
-  EMBLEM=EmblemMusic,28,28,34,32,SHADOW
-  EMBLEMSELECTED=EmblemMusic,28,28,34,32,SHADOW
-
-Features:
+## Features
 
 - Default images and emblems as PNG files (any PNG; true colour with
   alpha is best), scaled to the size the setting asks for.
-- Effects per layer: SHADOW, GLOW, GRAY, DARK, BRIGHT, NONE; a settings
-  file chooses the effect for settings without one, and the shadow and
-  glow look (offset, softness, opacity, colour).
-- INTERNAL: an icon's own picture as the emblem (a program's picture on
-  a drawer image).
+- Effects per layer: `SHADOW`, `GLOW`, `GRAY`, `DARK`, `BRIGHT`, `NONE`;
+  a settings file chooses the effect for settings without one, and the
+  shadow and glow look (offset, softness, opacity, colour).
+- `INTERNAL`: an icon's own picture as the emblem (a program's picture
+  on a drawer image).
 - The icon's own pictures are always kept: saving never stores the
   composed picture, and converting back gives the original icon.
 - New or changed images show on the next icon load, without a restart.
-- Icons need the module's own file format; the EmblemIcon command
+- Icons need the module's own file format; the `EmblemIcon` command
   converts icons to it and back and sets their settings, one by one, by
   pattern, or whole drawer trees.
-- A small sample set (AmigaOS 4.1 icon style, public domain) for the ten
-  example icons, RemoveSamples to delete just those images, an AmigaGuide
-  manual, and an Install script that installs, updates and removes
-  everything (removing turns Emblem icons back into normal ones).
+- A small sample set (AmigaOS 4.1 icon style) for the ten example icons,
+  and `RemoveSamples` to delete just those images.
+
+## Installation
+
+Unpack the archive and double-click `Install` in the `Emblem` drawer. It
+installs, updates and removes everything (removing turns Emblem icons
+back into normal ones).
 
 After installing, restart the computer: icon.library loads icon modules
 only when it starts.
 
-Based on openamiga.org project 34 "Emblem icon plugin" (2008), written
-anew.
+## Contents
 
-History:
+- `Libs/IconModules/emblem.iconmodule`: the icon module
+- `C/EmblemIcon`: converts icons and sets their settings
+- `Images/`: the sample images (go to `ENVARC:sys/emblem`)
+- `Examples/`: ten example icons, one feature each, and a ReadMe
+- `Emblem.guide`: the manual (AmigaGuide)
+- `Emblem-format.txt`: the file format, for programmers
+- `Install`, `RemoveSamples`, `LICENSE.txt`
 
-- 1.1 (not released yet): the settings are kept in the icon file, no
-  longer in the tool types (most Prefs editors refused to start with
-  them); module 1.1, EmblemIcon 1.2 (SET, UNSET, TYPE); small sample
-  set and RemoveSamples; new AmigaOS 4.1 style pictures for the
-  package's icons and the sample set.
-- 1.0 (15.11.2026): first release.
+## Using it
+
+Four settings do it, kept in the icon file (not in its tool types, so
+programs that read their tool types as arguments never see them):
+
+    IMAGE=DrawerNS
+    IMAGESELECTED=DrawerS
+    EMBLEM=EmblemMusic,28,28,34,32,SHADOW
+    EMBLEMSELECTED=EmblemMusic,28,28,34,32,SHADOW
+
+`EmblemIcon` sets them, for example:
+
+    EmblemIcon Work:Music SET="IMAGE=DrawerNS|EMBLEM=EmblemMusic,28,28,34,32"
+
+`Emblem.guide` explains every setting, the effects and the settings file.
+
+## License
+
+Public domain (The Unlicense, see `LICENSE.txt`), the sample images and
+icons too.
+
+## History
+
+### 1.1 (20.11.2026)
+
+- The settings are kept in the icon file, no longer in the tool types
+  (most Prefs editors refused to start with them); module 1.1,
+  EmblemIcon 1.2 (SET, UNSET, TYPE); small sample set and RemoveSamples;
+  new AmigaOS 4.1 style pictures for the package's icons and the sample
+  set.
+
+### 1.0 (15.11.2026)
+
+- First release.

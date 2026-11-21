@@ -31,7 +31,7 @@ REV="$ROOT/src/emblem.iconmodule_rev.h"
 
 ver=$(sed -n 's/^#define VERSION *\([0-9]*\)/\1/p' "$REV").$(sed -n 's/^#define REVISION *\([0-9]*\)/\1/p' "$REV")
 amigadate=$(sed -n 's/^#define DATE *"\(.*\)"/\1/p' "$REV")
-isodate=$(date +%Y%m%d)
+isodate=$(date +%d.%m.%Y)   # the readme date, DD.MM.YYYY
 
 for f in "emblem.iconmodule:emblem.iconmodule $ver ($amigadate)" "EmblemIcon:EmblemIcon "; do
 	bin="$ROOT/build/os4/${f%%:*}"
@@ -43,8 +43,10 @@ done
 [ -x "$ROOT/build/host/mkemblem" ] || { echo "build/host/mkemblem missing; run make tools" >&2; exit 1; }
 
 # every release says what changed
-grep -q "^- $ver (" "$ROOT/package/Emblem.readme" ||
-	{ echo "package/Emblem.readme has no History entry \"- $ver (...)\"" >&2; exit 1; }
+grep -q "^### $ver (" "$ROOT/package/Emblem.readme" ||
+	{ echo "package/Emblem.readme has no History entry \"### $ver (...)\"" >&2; exit 1; }
+# the README's Changelog comes from the readme's History
+python3 -I "$ROOT/tools/update_readme.py"
 grep -q "^@{b}$ver (" "$ROOT/package/Emblem/Emblem.guide" ||
 	{ echo "Emblem.guide has no History entry for $ver" >&2; exit 1; }
 
