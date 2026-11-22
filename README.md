@@ -114,7 +114,7 @@ the icon's own images pass `EMBLEMA_NoCompose, TRUE` to GetIconTags()
     tools/iconset_build.py package   # dist/emblem_icons_glenz.lha
 
 The OS4 build needs the cross-compiler image
-`walkero/amigagccondocker:os4-gcc15-3.6.1` (GCC 15, SDK 54.25).
+`walkero/amigagccondocker:os4-gcc15-3.7.0` (GCC 15, SDK 54.25).
 
 ## Design notes
 

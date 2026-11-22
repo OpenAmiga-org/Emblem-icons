@@ -2,7 +2,7 @@
 #   make test   host tests: file format, PNG decoder, tool types (ASan/UBSan, zlib, pypng)
 #   make os4    cross-build module, EmblemIcon and the guest test helper (walkero docker)
 
-DOCKER_IMAGE = walkero/amigagccondocker:os4-gcc15-3.6.1
+DOCKER_IMAGE = walkero/amigagccondocker:os4-gcc15-3.7.0
 OS4 = build/os4
 HOST = build/host
 
