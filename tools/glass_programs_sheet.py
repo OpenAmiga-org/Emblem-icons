@@ -5,11 +5,14 @@ Group 4 (programs) of the glass set, first batch: each program its own glass obj
 selected (one part moved), composed by the Emblem engine (build/host/render) like the real icons.
 Uses the renders in DIR (<name>.png and <name>_open.png from tools/blender/glass_icons.py).
 FLIP.gif: all of them switching between normal and selected. SET: programs (default) or prefs1, ...
-(the Prefs editors, with the blue gear emblem, EmPrefs.png in DIR). Public domain.
+(the Prefs editors, with the blue gear emblem, EmPrefs.png in DIR). ORIGINAL=<stock .info file>: the
+stock icon (its two ARGB images) shown first, labelled "Original" (the user, 2026-11-23). Public domain.
 """
 import os
+import struct
 import subprocess
 import sys
+import zlib
 
 from PIL import Image, ImageDraw
 
@@ -129,6 +132,101 @@ SETS = {
         ("PF18B", "Presets, blue", "drawer", "drawer opens", "EmPresets"),
         ("PF18V", "Presets, violet", "drawer", "drawer opens", "EmPresetsV"),
     ]),
+    # the "do" icons (2026-11-21), one by one: Presets sub-drawers, the parent's blue
+    "do_viewers": ("Utilities/AmiGS/AmiGS and Utilities/AmiPDF/AmiPDF: the page + magnifier (AmiGS variant A)", [
+        ("DO10", "AmiGS", "amigs", "magnifier lifts", None),
+        ("DO11", "AmiPDF", "amipdf", "magnifier lifts", None),
+    ]),
+    "do_sgrab": ("Utilities/SGrab/SGrab: the glass camera (the drawer emblem's), three ways to move", [
+        ("DO12 A", "button + flash", "sgrab_a", "button + flash fire", None),
+        ("DO12 B", "lens", "sgrab_b", "lens extends", None),
+        ("DO12 C", "flash burst", "sgrab_c", "flash fires with rays", None),
+    ]),
+    "do_python": ("System/Python/Python: the Boing ball with its ring (the drawer emblem's), three ways to move", [
+        ("DO13 A", "ball turns", "python_a", "checks turn", None),
+        ("DO13 B", "bounce", "python_b", "jumps up", None),
+        ("DO13 C", "ring", "python_c", "ring tilts, glows", None),
+    ]),
+    "co_amidock": ("Commodities/AmiDock: own glass object + the EmCommodity emblem", [
+        ("CO01 A", "dock bar", "amidock_a", "middle icon up", "EmCommodity"),
+        ("CO01 B", "red button", "amidock_b", "pressed, lit", "EmCommodity"),
+        ("CO01 C", "upright dock", "amidock_c", "top icon out", "EmCommodity"),
+    ]),
+    "co_asyncwb": ("Commodities/AsyncWB (copies in the background): own glass object + the EmCommodity emblem", [
+        ("CO02 A", "busy spinner", "asyncwb_a", "spinner turns", "EmCommodity"),
+        ("CO02 B", "progress bar", "asyncwb_b", "bar fills", "EmCommodity"),
+        ("CO02 C", "page moves", "asyncwb_c", "page arrives", "EmCommodity"),
+    ]),
+    "co_autobordersize": ("Commodities/AutoBorderSize (resize by catching the border): own glass object + EmCommodity", [
+        ("CO03 A", "arrow on border", "autobordersize_a", "window wider", "EmCommodity"),
+        ("CO03 B", "corner arrow", "autobordersize_b", "window bigger", "EmCommodity"),
+        ("CO03 C", "border lights", "autobordersize_c", "wider, border lit", "EmCommodity"),
+    ]),
+    "co_autoinfo": ("Commodities/AutoInfo (an icon's information under the pointer): own glass object + EmCommodity", [
+        ("CO04 A", "info card", "autoinfo_a", "card pops up", "EmCommodity"),
+        ("CO04 B", "info sign", "autoinfo_b", "dot hops up", "EmCommodity"),
+        ("CO04 C", "pointer", "autoinfo_c", "card slides out", "EmCommodity"),
+    ]),
+    "co_autopoint": ("Commodities/AutoPoint (the window under the pointer becomes active): own glass object + EmCommodity", [
+        ("CO05 A", "back window", "autopoint_a", "its title lights", "EmCommodity"),
+        ("CO05 B", "pointer moves", "autopoint_b", "onto it, lit", "EmCommodity"),
+        ("CO05 C", "comes forward", "autopoint_c", "lit, forward", "EmCommodity"),
+    ]),
+    "co_clicktofront": ("Commodities/ClickToFront (the window you click on comes to the front): own glass object + EmCommodity", [
+        ("CO06 A", "double click", "clicktofront_a", "to the front", "EmCommodity"),
+        ("CO06 B", "swap", "clicktofront_b", "windows swap", "EmCommodity"),
+        ("CO06 C", "three windows", "clicktofront_c", "back one forward", "EmCommodity"),
+    ]),
+    "co_contextmenus": ("Commodities/ContextMenus (pop-up menus where you click): own glass object + EmCommodity", [
+        ("CO07 A", "menu", "contextmenus_a", "next item lit", "EmCommodity"),
+        ("CO07 B", "pops up", "contextmenus_b", "menu appears", "EmCommodity"),
+        ("CO07 C", "submenu", "contextmenus_c", "submenu out", "EmCommodity"),
+    ]),
+    "co_crossdos": ("Commodities/CrossDOS (reads and writes PC disks): own glass object + EmCommodity", [
+        ("CO08 A", "floppy", "crossdos_a", "shutter opens", "EmCommodity"),
+        ("CO08 B", "page out", "crossdos_b", "page rises", "EmCommodity"),
+        ("CO08 C", "two-way arrow", "crossdos_c", "arrow lights", "EmCommodity"),
+    ]),
+    "co_deficons": ("Commodities/DefIcons (files without an icon get one by their type): own glass object + EmCommodity", [
+        ("CO09 A", "typed pages", "deficons_a", "pages fan out", "EmCommodity"),
+        ("CO09 B", "plain page", "deficons_b", "gets its type", "EmCommodity"),
+        ("CO09 C", "stack", "deficons_c", "front page lifts", "EmCommodity"),
+    ]),
+    "co_depthtofront": ("Commodities/DepthToFront (the depth gadget brings a window to the front): own glass object + EmCommodity", [
+        ("CO10 A", "depth gadget", "depthtofront_a", "to the front", "EmCommodity"),
+        ("CO10 B", "two squares", "depthtofront_b", "back one forward", "EmCommodity"),
+        ("CO10 C", "swap", "depthtofront_c", "windows swap", "EmCommodity"),
+    ]),
+    "co_exchange": ("Commodities/Exchange (turns the commodities on and off, shows and quits them): own glass object + EmCommodity", [
+        ("CO11 A", "switches", "exchange_a", "one switched off", "EmCommodity"),
+        ("CO11 B", "dot display", "exchange_b", "letters scroll", "EmCommodity"),
+        ("CO11 C", "list", "exchange_c", "row selected, off", "EmCommodity"),
+    ]),
+    "co_fkey": ("Commodities/FKey (keys that start programs and do other actions): own glass object + EmCommodity", [
+        ("CO12 A", "F1 key", "fkey_a", "pressed", "EmCommodity"),
+        ("CO12 B", "three keys", "fkey_b", "middle pressed", "EmCommodity"),
+        ("CO12 C", "key + window", "fkey_c", "window pops up", "EmCommodity"),
+    ]),
+    "co_mouseblanker": ("Commodities/MouseBlanker (hides the pointer while you type): own glass object + EmCommodity", [
+        ("CO13 A", "window", "mouseblanker_a", "pointer fades", "EmCommodity"),
+        ("CO13 B", "keys", "mouseblanker_b", "key down, pointer fades", "EmCommodity"),
+        ("CO13 C", "typing", "mouseblanker_c", "text typed, pointer fades", "EmCommodity"),
+    ]),
+    "co_nocapslock": ("Commodities/NoCapsLock (Caps Lock does nothing): own glass object + EmCommodity", [
+        ("CO14 A", "light", "nocapslock_a", "pressed, light out", "EmCommodity"),
+        ("CO14 B", "no-sign", "nocapslock_b", "pressed, sign lit", "EmCommodity"),
+        ("CO14 C", "A to a", "nocapslock_c", "pressed, small a", "EmCommodity"),
+    ]),
+    "co_rawbinfo": ("Commodities/RAWBInfo (Workbench's Information window, made with ReAction): own glass object + EmCommodity", [
+        ("CO15 A", "info sign", "rawbinfo_a", "sign forward", "EmCommodity"),
+        ("CO15 B", "page + window", "rawbinfo_b", "window pops up", "EmCommodity"),
+        ("CO15 C", "info window", "rawbinfo_c", "field edited", "EmCommodity"),
+    ]),
+    "co_screenblankerengine": ("Commodities/ScreenBlankerEngine (blanks the screen when the computer is left alone): own glass object + EmCommodity", [
+        ("CO16 A", "roller blind", "screenblankerengine_a", "blind down", "EmCommodity"),
+        ("CO16 B", "blanks", "screenblankerengine_b", "screen dark, stars", "EmCommodity"),
+        ("CO16 C", "sleeps", "screenblankerengine_c", "dark, stars, Zz", "EmCommodity"),
+    ]),
 }
 
 
@@ -143,6 +241,33 @@ for _key, _parents in (("sub_utilities", ("SYS:Utilities",)), ("sub_system", ("S
     SETS[_key] = (" + ".join(_parents) + " sub-drawers: the glass drawer + an emblem",
                   [(i, (p.split(":")[1] + "/" if len(_parents) > 1 else "") + n, "drawer", "drawer opens", t)
                    for i, p, n, t in _SD if p in _parents])
+
+
+def stock_images(path):
+    """the normal and selected images of an OS 4 icon (.info with FORM ICON, ARGB chunks), 64x64 RGBA"""
+    d = open(path, "rb").read()
+    i = d.find(b"FACE")
+    w, h = d[i + 8] + 1, d[i + 9] + 1
+    ims, p = [], 0
+    while len(ims) < 2:
+        p = d.find(b"ARGB", p + 1)
+        if p < 0:
+            break
+        body = d[p + 8:p + 8 + struct.unpack(">I", d[p + 4:p + 8])[0]]
+        for off in range(20):
+            try:
+                raw = zlib.decompress(body[off:])
+                break
+            except zlib.error:
+                raw = b""
+        if len(raw) >= w * h * 4:
+            im = Image.frombytes("RGBA", (w, h), raw[:w * h * 4], "raw", "ARGB")
+            c = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+            c.alpha_composite(im, ((64 - w) // 2, (64 - h) // 2)) if w <= 64 and h <= 64 else None
+            ims.append(c if w <= 64 and h <= 64 else im.resize((64, 64), Image.LANCZOS))
+    if len(ims) == 1:
+        ims.append(ims[0])
+    return ims
 
 
 def main():
@@ -174,6 +299,9 @@ def main():
                            capture_output=True, text=True).stdout
         assert "composed=1" in r, r
         composed[iid] = (Image.open(pre + "_1.png").convert("RGBA"), Image.open(pre + "_2.png").convert("RGBA"))
+    if os.environ.get("ORIGINAL"):
+        composed["Original"] = tuple(stock_images(os.environ["ORIGINAL"]))
+        ITEMS = [("Original", "(stock)", None, "", None)] + list(ITEMS)
 
     cw, cell = 170, 150
     W = 12 + PER_ROW * cw
@@ -182,7 +310,7 @@ def main():
         for k in range(0, len(ITEMS), PER_ROW):
             chunk = ITEMS[k:k + PER_ROW]
             blocks.append((title if k == 0 else None,
-                           [(f"{iid} {prog}" + (f": {what}" if state else ""), composed[iid][state])
+                           [(f"{iid} {prog}" + (f": {what}" if state and what else ""), composed[iid][state])
                             for iid, prog, _, what, _ in chunk]))
     H = 30 + sum((18 if t else 0) + 2 * (cell + 22) + 2 * 84 + 14 for t, _ in blocks)
     sheet = Image.new("RGBA", (W, H), (255, 255, 255, 255))

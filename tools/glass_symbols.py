@@ -26,6 +26,7 @@ TILES = {
     "EmGames": ("games", GREEN),
     "EmPicture": ("picture", BLUE),
     "EmStar": ("star", VIOLET),
+    "EmCommodity": ("keycap", VIOLET),             # the commodities' family emblem (user picked B 2026-11-22)
     # SYS: drawers (group 1)
     "EmPrefs": ("gear", BLUE),
     "EmUtilities": ("wrench", VIOLET),
@@ -50,6 +51,14 @@ TILES = {
     "EmFont": ("font", VIOLET),
     # the Presets drawer in Prefs (group 4, 2026-11-16: a drawer, so the glass drawer + this emblem)
     "EmPresets": ("presets", BLUE),
+    # Presets sub-drawers (2026-11-21, variants until the user picks)
+    "SdPrAmiDock": ("dock", BLUE),
+    "SdPrDefault": ("default", BLUE),
+    # Presets/Patterns (DO03): SdMuiPatterns, the user picked the MUI/Patterns tile
+    "SdPrPointers": ("pointers", BLUE),
+    "SdPrSilverGreen": ("silvergreen", BLUE),
+    "SdPrSounds": ("sounds", BLUE),
+    "SdPyLib": ("pylib", RED),
 }
 # archives (group 3): the glass crate + a tile with the format letters
 ARCHIVES = ["LHA", "LZX", "ZIP", "GZ", "BZ2", "TAR", "7Z", "ARJ", "RAR", "ZOO"]
@@ -196,6 +205,26 @@ def text(c, t, box, path, axes=None, stretch=1.0):
 
 SANS = "/usr/share/fonts/truetype/ubuntu/UbuntuSans[wdth,wght].ttf"     # axes: width 75-100, weight 100-800
 SERIF = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
+
+
+def amiga_a(c, box):
+    """the Amiga key's "A" (as on the stock OS 4.1 commodity keycaps): slanted, a thin left stroke, a thick
+    right stroke, a thin crossbar, foot serifs; fitted into box (64-space)"""
+    x0, y0, x1, y1 = box
+    P = lambda pts: tuple(v for u, w in pts for v in (x0 + u * (x1 - x0), y0 + w * (y1 - y0)))
+    for part in (((0.50, 0.0), (0.60, 0.0), (0.20, 0.95), (0.10, 0.95)),          # left stroke (thin)
+                 ((0.46, 0.0), (0.68, 0.0), (0.88, 0.95), (0.62, 0.95)),          # right stroke (thick)
+                 ((0.30, 0.60), (0.74, 0.60), (0.76, 0.70), (0.26, 0.70)),        # crossbar
+                 ((0.36, 0.0), (0.68, 0.0), (0.68, 0.07), (0.36, 0.07)),          # top serif
+                 ((0.0, 0.91), (0.32, 0.91), (0.32, 1.0), (0.0, 1.0)),            # left foot
+                 ((0.54, 0.91), (1.0, 0.91), (1.0, 1.0), (0.54, 1.0))):           # right foot
+        c.poly(P(part), WHITE)
+
+
+def s_keycap(c):
+    """a solid keycap with the Amiga key's "A" cut out of it"""
+    c.rrect((6, 6, 58, 58), 9, WHITE)
+    erase(c, lambda g: amiga_a(g, (15, 14, 49, 50)))
 
 
 def s_presets(c):
@@ -512,6 +541,86 @@ def s_pencil(c):
     erase(c, lambda g: g.poly(sum([pt(-8, -22), pt(8, -22), pt(8, -19), pt(-8, -19)], ()), WHITE))
     c.poly(sum([pt(-7, 17), pt(7, 17), pt(0, 31)], ()), WHITE)
     erase(c, lambda g: g.poly(sum([pt(-2.5, 26), pt(2.5, 26), pt(0, 32)], ()), WHITE))
+
+
+# the "do" icons (2026-11-21): Presets sub-drawers, reviewed one by one; variants until picked
+def s_dock(c):
+    """Presets/AmiDock (DO01, user picked variant A 2026-11-21): a dock bar lying flat with three icons in it"""
+    c.rrect((4, 18, 60, 46), 5, None, WHITE, 4)
+    for x in (11, 26, 41):
+        c.rrect((x, 24, x + 12, 40), 2, WHITE)
+
+
+def s_default(c):
+    """Presets/Default (DO02, user picked variant B 2026-11-21): a monitor showing a window (the GUI look
+    for each screen size)"""
+    c.rrect((4, 6, 60, 46), 4, None, WHITE, 4)
+    c.rect((14, 15, 50, 37), WHITE)
+    erase(c, lambda g: g.rect((17, 22, 47, 34), WHITE))
+    c.rect((28, 46, 36, 54), WHITE)
+    c.rrect((16, 53, 48, 59), 2, WHITE)
+
+
+def arrow(c, x, y, k=1.0, gap=0):
+    """a mouse pointer arrow, tip at x, y; gap: cut a margin around it first (when it lies on another)"""
+    pts = [(0, 0), (0, 36), (9, 28), (15, 42), (21, 39), (15, 26), (27, 26)]
+    pts = sum([(x + px * k, y + py * k) for px, py in pts], ())
+    if gap:
+        erase(c, lambda g: g.poly(pts, WHITE, WHITE, gap))
+    c.poly(pts, WHITE)
+
+
+def s_pointers(c):
+    """Presets/Pointers (DO04, user picked variant A 2026-11-21): the mouse pointer arrow"""
+    arrow(c, 18, 9)
+
+
+def brush(c, x, y, gap=5):
+    """a paint brush, bristles down left at x, y, handle up right"""
+    r = math.radians(-45)
+
+    def pt(px, py):
+        return (x + px * math.cos(r) - py * math.sin(r), y + px * math.sin(r) + py * math.cos(r))
+    handle = sum([pt(14, -3), pt(40, -2.5), pt(40, 2.5), pt(14, 3)], ())
+    head = sum([pt(0, -5), pt(14, -5), pt(14, 5), pt(0, 5)], ())
+    tip = sum([pt(-7, 0), pt(0, -5), pt(0, 5)], ())
+    for part in (handle, head, tip):
+        erase(c, lambda g, p=part: g.poly(p, WHITE, WHITE, gap))
+    for part in (handle, head, tip):
+        c.poly(part, WHITE)
+
+
+def s_silvergreen(c):
+    """Presets/SilverGreen, a theme (DO05, user picked variant A 2026-11-21): Default's monitor with a
+    paint brush (a look restyled)"""
+    s_default(c)
+    brush(c, 30, 34)
+
+
+def speaker(c, x=0, waves=2):
+    c.poly((x + 6, 24, x + 16, 24, x + 30, 10, x + 30, 54, x + 16, 40, x + 6, 40), WHITE)
+    for k in range(waves):
+        r = 12 + k * 10
+        pts = []
+        for t in range(-50, 51, 10):
+            a = math.radians(t)
+            pts += [x + 30 + r * math.cos(a), 32 + r * math.sin(a)]
+        c.line(tuple(pts), WHITE, 4)
+
+
+def s_sounds(c):
+    """Presets/Sounds (DO06, user picked variant C 2026-11-21): a waveform"""
+    pts = []
+    for i in range(57):  # 4 wave periods
+        x = 4 + i
+        env = math.sin(math.pi * i / 56)
+        pts += [x, 32 - 22 * env * math.sin(i * 0.45)]
+    c.line(tuple(pts), WHITE, 4)
+
+
+def s_pylib(c):
+    """System/Python/Lib (DO07, user picked variant C 2026-11-21): the letters py"""
+    text(c, "py", (10, 10, 54, 54), SANS, [75, 800], 1.2)
 
 
 # the sub-drawers with icons of their own (docs/iconset_inventory.md): (parent, drawer, tile, symbol); the

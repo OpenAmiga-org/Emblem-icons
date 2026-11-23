@@ -67,6 +67,18 @@ PROGRAM_DIRS = {
 for _d, _names in PROGRAM_DIRS.items():
     for _n in _names.split():
         SOURCES["p_" + _n] = (f"{_d}/{_n}.png", f"{_d}/{_n}_open.png", 0.5)
+# the "do" icons (docs/iconset_plan.md DO08-DO13, CO01-CO16, picked 2026-11-22/23): own glass objects,
+# with the bloom their sheets were approved with
+DO_PROGRAMS = {"amiupdate": 0.5, "rollback": 0.5, "amigs": 0.5, "amipdf": 0.5, "sgrab": 0.5, "python": 0.86}
+for _n, _b in DO_PROGRAMS.items():
+    SOURCES["p_" + _n] = (f"do/{_n}.png", f"do/{_n}_open.png", _b)
+COMMODITIES = {"AmiDock": "amidock", "AsyncWB": "asyncwb", "AutoBorderSize": "autobordersize", "AutoInfo": "autoinfo",
+               "AutoPoint": "autopoint", "ClickToFront": "clicktofront", "ContextMenus": "contextmenus",
+               "CrossDOS": "crossdos", "DefIcons": "deficons", "DepthToFront": "depthtofront", "Exchange": "exchange",
+               "FKey": "fkey", "MouseBlanker": "mouseblanker", "NoCapsLock": "nocapslock", "RAWBInfo": "rawbinfo",
+               "ScreenBlankerEngine": "screenblankerengine"}
+for _n in COMMODITIES.values():
+    SOURCES["c_" + _n] = (f"co/{_n}.png", f"co/{_n}_open.png", 0.86)
 
 
 def emblem_source(name):
@@ -165,6 +177,19 @@ for f, em in (("Open Connection", "SdConnections"), ("New Connection", "EmConnNe
 # the sub-drawers (Presets in Prefs included)
 for p, n, t, _ in gs.SUBDRAWERS:
     m(p + "/" + n, "drawer", t)
+# the "do" icons (docs/iconset_plan.md, decided one by one 2026-11-21..23)
+for n, t in (("AmiDock", "SdPrAmiDock"), ("Default", "SdPrDefault"), ("Patterns", "SdMuiPatterns"),
+             ("Pointers", "SdPrPointers"), ("SilverGreen", "SdPrSilverGreen"), ("Sounds", "SdPrSounds")):
+    m("SYS:Prefs/Presets/" + n, "drawer", t)                     # DO01-DO06
+m("SYS:System/Python/Lib", "drawer", "SdPyLib")                 # DO07
+for path, n in (("SYS:System/AmiUpdate/AmiUpdate", "amiupdate"), ("SYS:System/AmiUpdate/System_RollBack", "rollback"),
+                ("SYS:Utilities/AmiGS/AmiGS", "amigs"), ("SYS:Utilities/AmiPDF/AmiPDF", "amipdf"),
+                ("SYS:Utilities/SGrab/SGrab", "sgrab"), ("SYS:System/Python/Python", "python")):
+    m(path, "p_" + n)                                           # DO08-DO13
+for f, n in COMMODITIES.items():
+    m("SYS:Utilities/Commodities/" + f, "c_" + n, "EmCommodity")  # DO14 emblem, CO01-CO16
+for path in ("SYS:ChangeLog.guide", "SYS:Utilities/SGrab/SGrab.guide"):
+    m(path, "file", "EmDocs")                                   # the guides: as def_guide
 
 # left alone on purpose (group 6): pointers, frames, overlays, dock and window icons
 LEFT_ALONE = {"def_iconify", "def_window", "def_docky", "def_extras_dock", "def_internet_dock", "def_players_dock",

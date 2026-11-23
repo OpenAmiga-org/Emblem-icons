@@ -400,3 +400,61 @@ the lists in docs/iconset_mapping.md):
   drawer: no name clashes with the user's own images or the samples, Install/Remove replace or delete
   just that drawer, several sets can sit side by side, and a setting says where its image comes from
   (`IMAGE=glenz/p_printer`). Against: a few more characters per setting. Changing it is the `SET` name.
+
+## The "do" icons (user, 2026-11-21)
+
+- **Commodities (16):** each its own glass object (like the Prefs editors) + a new violet family
+  emblem lower right: a keycap with the Amiga "A" (the stock OS 4.1 family mark); selected = a moving
+  part per object.
+- **Everything else is decided one icon at a time** (user: "Let's do these one by one"): the six
+  Presets sub-drawers (glass drawer + a blue emblem), Python/Lib (drawer + red emblem), the programs
+  AmiUpdate, System_RollBack, AmiGS, AmiPDF, SGrab, the Python icon, and the two guides.
+  Sheets in docs/iconsets/glass/do/ (IDs DO01...; variants A, B, C until one is picked).
+- DO01 Presets/AmiDock: variants A (dock bar with three icons), B (upright dock), C (dock bar, the
+  middle icon zoomed up), docs/iconsets/glass/do/do01_amidock.png. **PICKED: A** (tile SdPrAmiDock).
+- DO02 Presets/Default (holds the GUI looks per screen size): A star, B monitor showing a window,
+  C window with a check mark, docs/iconsets/glass/do/do02_default.png. **PICKED: B** (tile SdPrDefault).
+- DO03 Presets/Patterns: A the MUI/Patterns checker tile (SdMuiPatterns), B a wallpaper of diamonds,
+  C a wallpaper roll with the patterned sheet hanging down, docs/iconsets/glass/do/do03_patterns.png.
+  **PICKED: A** (the same tile as MUI/Patterns, SdMuiPatterns).
+- DO04 Presets/Pointers: A the pointer arrow, B the arrow + the busy clock, C three arrows,
+  docs/iconsets/glass/do/do04_pointers.png. **PICKED: A** (tile SdPrPointers).
+- DO05 Presets/SilverGreen (a theme): A Default's monitor + a paint brush, B a window + a paint brush,
+  C the letters SG, docs/iconsets/glass/do/do05_silvergreen.png. **PICKED: A** (tile SdPrSilverGreen).
+- DO06 Presets/Sounds: A a loudspeaker with two waves, B a music note (the EmMusic symbol, blue),
+  C a waveform, docs/iconsets/glass/do/do06_sounds.png. **PICKED: C** (tile SdPrSounds).
+- DO07 System/Python/Lib (red, System's colour): A the MUI/Libs book spines, B three stacked
+  building blocks (modules), C the letters py, docs/iconsets/glass/do/do07_pylib.png. **PICKED: C**
+  (tile SdPyLib).
+- DO08 System/AmiUpdate/AmiUpdate (own glass object, the drawer emblem's gear, tools/blender/glass_do.py):
+  A gear + red button, selected: the button pressed in and brighter; B the same, selected: the gear
+  turns half a tooth; C gear + a glowing red down arrow, selected: the arrow drops;
+  docs/iconsets/glass/do/do08_amiupdate.png. **PICKED: A** (ICON amiupdate).
+- DO09 System/AmiUpdate/System_RollBack (own glass object): A a glass clock in a green back-arrow ring,
+  selected: the hands go back an hour; B the same, selected: the arrow ring turns back; C AmiUpdate's
+  gear with a green back arrow, selected: the arrow turns back; docs/iconsets/glass/do/do09_rollback.png.
+  **PICKED: C** (ICON rollback).
+- DO10 Utilities/AmiGS/AmiGS (own glass object: the drawer emblem's white page, red swirl, PS, magnifier):
+  A selected: the magnifier lifts and tilts towards the viewer; B selected: it slides over the swirl;
+  docs/iconsets/glass/do/do10_amigs.png. **PICKED: A**, the page stays white (ICON amigs).
+- DO11 Utilities/AmiPDF/AmiPDF: the same as AmiGS with PDF (ICON amipdf); docs/iconsets/glass/do/do11_viewers.png.
+- DO12 SGrab: the drawer emblem's glass camera, standing; sheet do12_sgrab. **PICKED A** (2026-11-22): selected = the button pressed in (red) and the flash fires (dim grey-blue when not).
+- DO13 System/Python/Python (icon): the drawer emblem's Boing ball + yellow ring, standing; sheet do13_python. **PICKED A** (2026-11-22): selected = the ball turns (the checks move on).
+- SYS:ChangeLog.guide and SYS:Utilities/SGrab/SGrab.guide (user 2026-11-22): the def_guide icon (glass file page + EmDocs), no new art.
+- DO14 the commodities' family emblem (violet, lower right): the Amiga key's "A" (slanted, thin left and thick right stroke, serifs; drawn after the stock keycaps, user 2026-11-22) on a keycap; variants A (3D keycap outline), B (solid keycap, A cut out), C (face + skirt), sheet do14_commodity_emblem. **PICKED B** (tile EmCommodity).
+- CO01 Commodities/AmiDock (+ EmCommodity): A glass dock bar with three icons (selected: the middle one pops up), B the stock icon's red button on a glass base (pressed, lit), C upright dock (top icon slides out); sheet co01_amidock. **PICKED A** (2026-11-22).
+- CO02 Commodities/AsyncWB: A two windows + a green busy spinner (selected: turns on, lit), B window with a progress bar (fills), C two windows and a page between them (page arrives); sheet co02_asyncwb. **PICKED A** (2026-11-22).
+- CO03 Commodities/AutoBorderSize (resize windows by catching the border; user 2026-11-23: the arrows by the border): A double arrow on the left border (window wider), B diagonal arrow on the upper right corner (bigger), C as A + the caught border lit blue (arrows kept off the lower right, the emblem's place); sheet co03_autobordersize. **PICKED C** (2026-11-23).
+- CO04 Commodities/AutoInfo: A page icon + yellow info card (pops up, lit), B glass info sign (the i's dot hops up), C pointer on a page icon (info card slides out); sheet co04_autoinfo. **PICKED A** (2026-11-23).
+- CO05 Commodities/AutoPoint: A two windows, pointer on the back one (its title lights), B pointer moves onto a window (title lights), C as A + the back window comes forward; sheet co05_autopoint. **PICKED C** (2026-11-23).
+- CO06 Commodities/ClickToFront (the window you click on comes to the front): A two windows + pointer with double-click rings (back one comes to the front), B the windows swap, C three stacked windows (the rearmost comes to the front); sheet co06_clicktofront. **PICKED A** (2026-11-23).
+- CO07 Commodities/ContextMenus: A window + glass pop-up menu, an item lit under the pointer (next item lit), B the menu pops up at the pointer, C a lit item's submenu slides out; sheet co07_contextmenus. **PICKED A** (2026-11-23).
+- CO08 Commodities/CrossDOS (reads and writes PC disks): A the glass floppy (shutter opens), B a page rises out of it, C a blue two-way arrow across it (lights up); sheet co08_crossdos. **PICKED A** (2026-11-23).
+- CO09 Commodities/DefIcons (files without an icon get one by their type): A three glass pages with type marks (text, sound, picture; fan out), B a plain page that gets a picture, C a stack whose front page lifts; sheet co09_deficons. **PICKED A** (2026-11-23).
+- CO10 Commodities/DepthToFront (the depth gadget brings a window to the front): A two windows, the pointer on the back one's depth gadget (it comes to the front), B a large glass depth gadget (back square forward), C the windows swap; sheet co10_depthtofront. **PICKED A** (2026-11-23).
+- CO11 Commodities/Exchange (turns the commodities on and off, shows and quits them): A a panel with three switches (one switched off), B a glass dot display with CX in green dots (letters scroll one dot), C a list window (a row selected, its light off); sheet co11_exchange. **PICKED B** (2026-11-23).
+- CO12 Commodities/FKey (keys that start programs and do other actions): A a glass F1 key on a slab (pressed, face blue), B three keys F1-F3 (middle pressed), C the key and a window that pops up; sheet co12_fkey. **PICKED A** (2026-11-23).
+- CO13 Commodities/MouseBlanker (hides the pointer while you type): A a window with the pointer (fades to an outline), B the pointer over glass keys (a key down, pointer fades), C a window with text and a blue text cursor (more text typed, pointer fades); sheet co13_mouseblanker. **PICKED C** (2026-11-23).
+- CO14 Commodities/NoCapsLock (Caps Lock does nothing): A the glass Caps Lock key with the stock arrow and a green light (pressed, light out), B a red no-sign in front (pressed, sign lit), C a capital A (pressed, a small a); sheet co14_nocapslock. **PICKED A** (2026-11-23).
+- CO15 Commodities/RAWBInfo (Workbench's Information window, made with ReAction): A a window with the glass info sign (comes forward), B a page whose Information window pops up, C an Information window with the info sign and three fields (the first lit, edited); sheet co15_rawbinfo. **PICKED C** (2026-11-23).
+- CO16 Commodities/ScreenBlankerEngine (blanks the screen when the computer is left alone): A a glass monitor with an amber roller blind half down (pulled down), B the screen blanked with stars, C blanked with stars and a Zz; sheet co16_screenblankerengine. **PICKED A** (2026-11-23).

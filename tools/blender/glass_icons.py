@@ -858,7 +858,7 @@ else:
 cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
 
 # group 4, the programs (tools/blender/glass_programs.py, run in this namespace)
-for _f in ("glass_programs.py", "glass_prefs.py", "glass_utils.py", "glass_emblems.py"):
+for _f in ("glass_programs.py", "glass_prefs.py", "glass_utils.py", "glass_emblems.py", "glass_do.py"):
     _progs = os.path.join(os.path.dirname(os.path.abspath(__file__)), _f)
     exec(compile(open(_progs).read(), _progs, "exec"))
 # the built-in icons below win over a program of the same name: never reuse one (PF32 USB was "usb")
